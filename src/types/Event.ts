@@ -1,0 +1,20 @@
+export type IncertezaData = 'exata' | 'ano' | 'decada' | 'seculo' | 'aproximada';
+
+export interface HistoricalEvent {
+  id: string;
+  titulo: string;
+  resumo: string;
+  data_inicio: string;
+  data_fim: string;
+  incerteza_data: IncertezaData;
+  lat: number;
+  lng: number;
+  local_nome_epoca: string;
+  local_nome_atual: string;
+  geocoding_fonte: string;
+  confianca_local: number;
+  nivel_importancia: 1 | 2 | 3 | 4 | 5;
+  era: string;
+  atores: string[];
+  tags: string[];
+}
