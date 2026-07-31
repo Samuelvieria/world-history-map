@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import GlobeGL, { type GlobeMethods } from 'react-globe.gl';
 import type { PositionedEvent } from '../utils/geo';
 import { CATEGORIAS } from '../utils/categorias';
+import { criarModeloParaEvento } from '../utils/models3d';
 
 function corParaRgb(hex: string): string {
   const valor = parseInt(hex.replace('#', ''), 16);
@@ -110,7 +111,9 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     (e) => e.nivel_importancia >= 4 || e.id === selectedId,
   );
 
-  const eventosComIcone = altitude <= ALTITUDE_LIMITE_ICONES ? events : [];
+  const eventosCom3D = altitude <= ALTITUDE_LIMITE_ICONES ? events : [];
+  const eventosComRotulo =
+    altitude <= ALTITUDE_LIMITE_ROTULOS ? events.filter((e) => e.nivel_importancia === 5) : [];
 
   return (
     <GlobeGL
@@ -142,30 +145,34 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       ringMaxRadius={(e: object) => ((e as PositionedEvent).id === selectedId ? 4.5 : 3)}
       ringPropagationSpeed={1.2}
       ringRepeatPeriod={1800}
-      htmlElementsData={eventosComIcone}
+      objectsData={eventosCom3D}
+      objectLat="displayLat"
+      objectLng="displayLng"
+      objectAltitude={(e) => alturaPorImportancia((e as PositionedEvent).nivel_importancia)}
+      objectLabel={(e) => (e as PositionedEvent).titulo}
+      objectThreeObject={(d) => {
+        const evento = d as PositionedEvent;
+        const modelo = criarModeloParaEvento(evento);
+        // Modelos autorados em ~1-1.8 unidades; GLOBE_RADIUS do three-globe é
+        // uma constante fixa (100), então a escala é um valor absoluto
+        // calibrado visualmente, não derivado do raio do globo.
+        const escala = 1.4 + (evento.nivel_importancia - 1) * 0.5;
+        modelo.scale.set(escala, escala, escala);
+        return modelo;
+      }}
+      onObjectClick={selecionarEClicar}
+      htmlElementsData={eventosComRotulo}
       htmlLat="displayLat"
       htmlLng="displayLng"
-      htmlAltitude={(e) => alturaPorImportancia((e as PositionedEvent).nivel_importancia) + 0.02}
+      htmlAltitude={(e) => alturaPorImportancia((e as PositionedEvent).nivel_importancia) + 0.06}
       htmlElement={(d) => {
         const evento = d as PositionedEvent;
-        const categoria = CATEGORIAS[evento.categoria];
-
         const el = document.createElement('div');
         el.className = 'globe-marker';
-
-        const icone = document.createElement('span');
-        icone.className = 'globe-marker__icone';
-        icone.style.background = categoria?.cor ?? '#94a3b8';
-        icone.textContent = categoria?.icone ?? '●';
-        el.appendChild(icone);
-
-        if (altitude <= ALTITUDE_LIMITE_ROTULOS && evento.nivel_importancia === 5) {
-          const texto = document.createElement('span');
-          texto.className = 'globe-marker__texto';
-          texto.textContent = evento.titulo;
-          el.appendChild(texto);
-        }
-
+        const texto = document.createElement('span');
+        texto.className = 'globe-marker__texto';
+        texto.textContent = evento.titulo;
+        el.appendChild(texto);
         el.addEventListener('click', (clickEvent) => {
           clickEvent.stopPropagation();
           selecionarEClicar(evento);

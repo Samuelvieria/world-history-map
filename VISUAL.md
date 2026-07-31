@@ -121,15 +121,24 @@ oferecer a 2 como tema alternativo depois.
 
 O que já está no ar, versus o que fica pra depois:
 
-- **Feito:** cor por categoria + ícone 2D (emoji, camada HTML) em zoom médio,
-  altura do cilindro por importância, anel pulsante nos eventos de importância
-  máxima e no evento selecionado, legenda de categoria + importância, busca com
-  voo de câmera, timeline de duas alças, colisão de coordenadas idênticas
-  resolvida com afastamento circular.
+- **Feito:** cor por categoria, altura do cilindro por importância, anel
+  pulsante nos eventos de importância máxima e no evento selecionado, legenda
+  de categoria + importância, busca com voo de câmera, timeline de duas
+  alças, colisão de coordenadas idênticas resolvida com afastamento circular.
+- **Modelos 3D — genéricos, não GLB baixado:** em vez de baixar assets prontos
+  (Poly Pizza/Kenney/Quaternius — exigiria verificar licença de cada arquivo
+  antes de usar), os modelos são construídos com geometria primitiva do
+  Three.js direto no código (`src/utils/models3d.ts`): espada (batalha),
+  prédio genérico (construção/religioso), barco (naval/override), coroa
+  (político), livro (cultural), bússola (descoberta), marcador esférico sóbrio
+  (desastre — de propósito, sem ícone lúdico). Um campo opcional `modelo3D` no
+  evento troca o modelo genérico da categoria por um específico quando vale a
+  pena (`piramide` nas Pirâmides de Gizé, `pessoa` no Código de Hamurábi,
+  `barco` na chegada de Colombo). Aparecem em zoom médio/perto (LOD por
+  altitude da câmera), com o texto do evento só nos de importância máxima e
+  zoom próximo. Trocar por GLB de verdade continua um upgrade futuro válido,
+  só não dá pra fazer isso sem checar a licença de cada arquivo.
 - **Adiado (precisa de mais trabalho antes de fazer certo):**
-  - Modelos 3D (GLB) em LOD alto — precisa escolher e baixar assets com licença
-    confirmada de Poly Pizza/Kenney/Quaternius, hospedar localmente e credenciar.
-    Não inventar URLs de modelo sem checar.
   - Arcos/paths (campanhas, rotas, migrações) — faz sentido quando tivermos
     eventos com origem+destino nos dados.
   - Fronteiras históricas por era (Polygons layer) — depende de um dataset

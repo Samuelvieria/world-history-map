@@ -163,29 +163,15 @@
   display: inline-block;
 }
 
-/* Ícone de categoria + (opcional) rótulo de texto por cima de cada evento.
-   Renderizado como overlay HTML (não texto 3D) pra ter suporte completo a
-   acentuação — ver VISUAL.md, "Sistema de marcadores por categoria". */
+/* Rótulo de texto por cima dos eventos de maior destaque (a forma/ícone da
+   categoria já vem do modelo 3D — ver utils/models3d.ts). Overlay HTML, não
+   texto 3D nativo, pra ter suporte completo a acentuação. */
 .globe-marker {
   transform: translate(-50%, -100%);
   display: flex;
   align-items: center;
-  gap: 6px;
   cursor: pointer;
   pointer-events: auto;
-}
-
-.globe-marker__icone {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.85);
-  font-size: 11px;
-  line-height: 1;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
 }
 
 .globe-marker__texto {

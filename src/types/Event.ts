@@ -11,6 +11,11 @@ export type Categoria =
   | 'descoberta'
   | 'desastre';
 
+// Substitui o modelo 3D genérico da categoria por um mais específico, pra
+// eventos onde vale a pena — ex: as pirâmides ganham formato de pirâmide em
+// vez do prédio genérico de "construção". Ver utils/models3d.ts.
+export type Modelo3D = 'piramide' | 'pessoa' | 'barco';
+
 export interface HistoricalEvent {
   id: string;
   titulo: string;
@@ -27,6 +32,7 @@ export interface HistoricalEvent {
   nivel_importancia: 1 | 2 | 3 | 4 | 5;
   era: string;
   categoria: Categoria;
+  modelo3D?: Modelo3D;
   atores: string[];
   tags: string[];
 }
