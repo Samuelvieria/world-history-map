@@ -1,5 +1,6 @@
 import type { HistoricalEvent } from '../types/Event';
 import { getYear, formatYear } from '../utils/date';
+import { CATEGORIAS } from '../utils/categorias';
 
 interface EventPanelProps {
   event: HistoricalEvent | null;
@@ -19,6 +20,12 @@ export default function EventPanel({ event, onClose }: EventPanelProps) {
         ×
       </button>
       <h2>{event.titulo}</h2>
+      <p className="event-panel__categoria">
+        <span className="event-panel__categoria-icone" style={{ background: CATEGORIAS[event.categoria]?.cor }}>
+          {CATEGORIAS[event.categoria]?.icone}
+        </span>
+        {CATEGORIAS[event.categoria]?.nome}
+      </p>
       <p className="event-panel__periodo">
         {periodo}
         {event.incerteza_data !== 'exata' && (

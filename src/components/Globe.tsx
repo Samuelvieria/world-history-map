@@ -2,18 +2,17 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import * as THREE from 'three';
 import GlobeGL, { type GlobeMethods } from 'react-globe.gl';
 import type { PositionedEvent } from '../utils/geo';
-
-const CORES_IMPORTANCIA: Record<number, string> = {
-  1: '#94a3b8',
-  2: '#60a5fa',
-  3: '#fbbf24',
-  4: '#fb923c',
-  5: '#ef4444',
-};
+import { CATEGORIAS } from '../utils/categorias';
 
 function corParaRgb(hex: string): string {
   const valor = parseInt(hex.replace('#', ''), 16);
   return `${(valor >> 16) & 255}, ${(valor >> 8) & 255}, ${valor & 255}`;
+}
+
+// Altura do cilindro (points layer) codifica a importância — ver VISUAL.md,
+// "Codificação de importância": nivel_importancia 1 quase raso, 5 bem alto.
+function alturaPorImportancia(nivelImportancia: number): number {
+  return 0.01 + (nivelImportancia - 1) * 0.045;
 }
 
 const CLOUDS_URL = '//unpkg.com/three-globe/example/clouds/clouds.png';
@@ -24,19 +23,22 @@ export interface GlobeHandle {
   flyTo: (lat: number, lng: number, altitude?: number) => void;
 }
 
-// Abaixo desta altitude a câmera já está perto o bastante pra que os rótulos
-// dos eventos de maior destaque não fiquem colados uns nos outros.
+// Ver VISUAL.md, "Level-of-detail": zoom distante só pontos simples; zoom
+// médio ganha o ícone 2D por categoria; zoom perto nos eventos de maior
+// destaque ganha também o rótulo de texto.
+const ALTITUDE_LIMITE_ICONES = 1.6;
 const ALTITUDE_LIMITE_ROTULOS = 1.0;
 
 interface GlobeProps {
   events: PositionedEvent[];
   altitude: number;
+  selectedId: string | null;
   onSelectEvent: (event: PositionedEvent) => void;
   onZoom: (altitude: number) => void;
 }
 
 const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
-  { events, altitude, onSelectEvent, onZoom },
+  { events, altitude, selectedId, onSelectEvent, onZoom },
   ref,
 ) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
@@ -102,8 +104,13 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     globeRef.current?.pointOfView({ lat: evento.displayLat, lng: evento.displayLng, altitude: 0.5 }, 1000);
   }
 
-  const eventosImportantes = events.filter((e) => e.nivel_importancia >= 4);
-  const eventosDestaque = altitude <= ALTITUDE_LIMITE_ROTULOS ? events.filter((e) => e.nivel_importancia === 5) : [];
+  // Anel pulsante: destaca os eventos de importância máxima sempre, e o
+  // evento selecionado no momento (mesmo que não seja de importância máxima).
+  const eventosComAnel = events.filter(
+    (e) => e.nivel_importancia >= 4 || e.id === selectedId,
+  );
+
+  const eventosComIcone = altitude <= ALTITUDE_LIMITE_ICONES ? events : [];
 
   return (
     <GlobeGL
@@ -118,31 +125,47 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       pointsData={events}
       pointLat="displayLat"
       pointLng="displayLng"
-      pointAltitude={0.01}
-      pointRadius={(e) => 0.16 + ((e as PositionedEvent).nivel_importancia - 1) * 0.15}
-      pointColor={(e) => CORES_IMPORTANCIA[(e as PositionedEvent).nivel_importancia] ?? '#ef4444'}
+      pointAltitude={(e) => alturaPorImportancia((e as PositionedEvent).nivel_importancia)}
+      pointRadius={(e) => 0.2 + ((e as PositionedEvent).nivel_importancia - 1) * 0.03}
+      pointColor={(e) => CATEGORIAS[(e as PositionedEvent).categoria]?.cor ?? '#94a3b8'}
       pointLabel={(e) => (e as PositionedEvent).titulo}
       onPointClick={selecionarEClicar}
-      ringsData={eventosImportantes}
+      ringsData={eventosComAnel}
       ringLat="displayLat"
       ringLng="displayLng"
       ringColor={(e: object) => {
-        const rgb = corParaRgb(CORES_IMPORTANCIA[(e as PositionedEvent).nivel_importancia] ?? '#ef4444');
+        const evento = e as PositionedEvent;
+        const selecionado = evento.id === selectedId;
+        const rgb = selecionado ? '255, 255, 255' : corParaRgb(CATEGORIAS[evento.categoria]?.cor ?? '#94a3b8');
         return (t: number) => `rgba(${rgb}, ${1 - t})`;
       }}
-      ringMaxRadius={3}
+      ringMaxRadius={(e: object) => ((e as PositionedEvent).id === selectedId ? 4.5 : 3)}
       ringPropagationSpeed={1.2}
       ringRepeatPeriod={1800}
-      htmlElementsData={eventosDestaque}
+      htmlElementsData={eventosComIcone}
       htmlLat="displayLat"
       htmlLng="displayLng"
-      htmlAltitude={0.02}
+      htmlAltitude={(e) => alturaPorImportancia((e as PositionedEvent).nivel_importancia) + 0.02}
       htmlElement={(d) => {
         const evento = d as PositionedEvent;
+        const categoria = CATEGORIAS[evento.categoria];
+
         const el = document.createElement('div');
-        el.className = 'globe-label-chip';
-        el.textContent = evento.titulo;
-        el.style.borderColor = CORES_IMPORTANCIA[evento.nivel_importancia] ?? '#ef4444';
+        el.className = 'globe-marker';
+
+        const icone = document.createElement('span');
+        icone.className = 'globe-marker__icone';
+        icone.style.background = categoria?.cor ?? '#94a3b8';
+        icone.textContent = categoria?.icone ?? '●';
+        el.appendChild(icone);
+
+        if (altitude <= ALTITUDE_LIMITE_ROTULOS && evento.nivel_importancia === 5) {
+          const texto = document.createElement('span');
+          texto.className = 'globe-marker__texto';
+          texto.textContent = evento.titulo;
+          el.appendChild(texto);
+        }
+
         el.addEventListener('click', (clickEvent) => {
           clickEvent.stopPropagation();
           selecionarEClicar(evento);

@@ -14,6 +14,7 @@
     "confianca_local": 0.95,
     "nivel_importancia": 4,
     "era": "idade_bronze",
+    "categoria": "construcao",
     "atores": ["Antigo Egito"],
     "tags": ["egito_antigo", "arquitetura"]
   },
@@ -32,6 +33,7 @@
     "confianca_local": 0.8,
     "nivel_importancia": 3,
     "era": "idade_bronze",
+    "categoria": "politico",
     "atores": ["Império Babilônico"],
     "tags": ["direito", "mesopotamia"]
   },
@@ -50,6 +52,7 @@
     "confianca_local": 0.5,
     "nivel_importancia": 2,
     "era": "idade_ferro",
+    "categoria": "construcao",
     "atores": ["Roma"],
     "tags": ["roma_antiga", "fundacao"]
   },
@@ -68,6 +71,7 @@
     "confianca_local": 0.9,
     "nivel_importancia": 3,
     "era": "idade_ferro",
+    "categoria": "batalha",
     "atores": ["Atenas", "Esparta"],
     "tags": ["grecia_antiga", "guerra"]
   },
@@ -86,6 +90,7 @@
     "confianca_local": 0.85,
     "nivel_importancia": 5,
     "era": "idade_media",
+    "categoria": "politico",
     "atores": ["Império Romano do Ocidente", "Hérulos"],
     "tags": ["roma", "idade_media", "transicao"]
   },
@@ -104,6 +109,7 @@
     "confianca_local": 0.85,
     "nivel_importancia": 5,
     "era": "idade_media",
+    "categoria": "desastre",
     "atores": ["Europa Medieval"],
     "tags": ["pandemia", "idade_media"]
   },
@@ -122,6 +128,7 @@
     "confianca_local": 0.95,
     "nivel_importancia": 5,
     "era": "idade_media",
+    "categoria": "batalha",
     "atores": ["Império Bizantino", "Império Otomano"],
     "tags": ["bizancio", "otomanos", "guerra"]
   },
@@ -140,6 +147,7 @@
     "confianca_local": 0.7,
     "nivel_importancia": 5,
     "era": "idade_moderna",
+    "categoria": "descoberta",
     "atores": ["Coroa de Castela", "Povos indígenas americanos"],
     "tags": ["exploracao", "america", "colonizacao"]
   },
@@ -158,6 +166,7 @@
     "confianca_local": 0.95,
     "nivel_importancia": 5,
     "era": "idade_contemporanea",
+    "categoria": "politico",
     "atores": ["França"],
     "tags": ["revolucao_francesa", "idade_contemporanea"]
   },
@@ -176,6 +185,7 @@
     "confianca_local": 0.9,
     "nivel_importancia": 5,
     "era": "idade_contemporanea",
+    "categoria": "batalha",
     "atores": ["Alemanha Nazista", "União Soviética"],
     "tags": ["segunda_guerra_mundial", "batalha"]
   }

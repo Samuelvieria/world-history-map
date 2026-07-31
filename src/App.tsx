@@ -66,6 +66,7 @@ function App() {
           ref={globeRef}
           events={eventosPosicionados}
           altitude={altitude}
+          selectedId={selectedEvent?.id ?? null}
           onSelectEvent={setSelectedEvent}
           onZoom={setAltitude}
         />
