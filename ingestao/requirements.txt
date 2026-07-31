@@ -1,0 +1,9 @@
+# Passo 1 do IA.md. Requer Python >= 3.10 (exigencia do proprio gliner).
+# Versoes travadas nas que foram efetivamente medidas — ver ingestao/README.md.
+gliner==0.2.28
+
+# Vem como dependencia transitiva do gliner; anotadas para referencia do que
+# foi instalado durante a medicao:
+#   torch==2.13.0  transformers==5.13.1  onnxruntime==1.28.0
+#   tokenizers==0.22.2  safetensors==0.8.0  sentencepiece==0.2.2
+#   huggingface_hub==1.26.0  numpy==2.5.1
