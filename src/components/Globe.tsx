@@ -10,10 +10,29 @@ function corParaRgb(hex: string): string {
   return `${(valor >> 16) & 255}, ${(valor >> 8) & 255}, ${valor & 255}`;
 }
 
-// Altura do cilindro (points layer) codifica a importância — ver VISUAL.md,
-// "Codificação de importância": nivel_importancia 1 quase raso, 5 bem alto.
-function alturaPorImportancia(nivelImportancia: number): number {
-  return 0.01 + (nivelImportancia - 1) * 0.045;
+// Tiles da NASA GIBS (dominio publico). "Shaded relief + bathymetry" da'
+// relevo de continente E de fundo de oceano, sem nuvens e sem ruas/fronteiras
+// modernas — coerente com um globo historico, onde uma malha viaria de 2026
+// seria anacronica.
+//
+// Detalhe cresce com o zoom, ao contrario de uma textura fixa: no nivel
+// maximo equivale a ~65.536 px de largura, contra os 4.096 px da textura que
+// vinha antes. Carrega so' os tiles visiveis.
+//
+// Nivel 8 e' o teto DESTA camada — nivel 9 responde HTTP 400 (verificado).
+const GIBS_CAMADA = 'BlueMarble_ShadedRelief_Bathymetry';
+const GIBS_NIVEL_MAX = 8;
+
+// O teto de nivel e' imposto por `globeTileEngineMaxLevel` no componente, e
+// nao aqui: a assinatura exige devolver string, entao nao ha' como recusar um
+// tile por este caminho.
+function urlDoTile(x: number, y: number, nivel: number): string {
+  // REST do GIBS e' {TileMatrix}/{TileRow}/{TileCol} — ou seja, y antes de x,
+  // ao contrario do padrao {z}/{x}/{y} de OSM.
+  return (
+    `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${GIBS_CAMADA}` +
+    `/default/GoogleMapsCompatible_Level${GIBS_NIVEL_MAX}/${nivel}/${y}/${x}.jpeg`
+  );
 }
 
 const CLOUDS_URL = '//unpkg.com/three-globe/example/clouds/clouds.png';
@@ -24,10 +43,10 @@ export interface GlobeHandle {
   flyTo: (lat: number, lng: number, altitude?: number) => void;
 }
 
-// Ver VISUAL.md, "Level-of-detail": zoom distante só pontos simples; zoom
-// médio ganha o ícone 2D por categoria; zoom perto nos eventos de maior
-// destaque ganha também o rótulo de texto.
-const ALTITUDE_LIMITE_ICONES = 1.6;
+// Level-of-detail por altitude da camera (VISUAL.md). Longe: so' marcador 2D,
+// que e' leve e sempre nitido. Perto: modelo 3D da categoria. Mais perto
+// ainda: rotulo de texto nos eventos de maior destaque.
+const ALTITUDE_LIMITE_3D = 1.6;
 const ALTITUDE_LIMITE_ROTULOS = 1.0;
 
 interface GlobeProps {
@@ -107,32 +126,36 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
 
   // Anel pulsante: destaca os eventos de importância máxima sempre, e o
   // evento selecionado no momento (mesmo que não seja de importância máxima).
+  // O anel e' plano, deitado na superficie — nao acrescenta volume.
   const eventosComAnel = events.filter(
     (e) => e.nivel_importancia >= 4 || e.id === selectedId,
   );
 
-  const eventosCom3D = altitude <= ALTITUDE_LIMITE_ICONES ? events : [];
-  const eventosComRotulo =
-    altitude <= ALTITUDE_LIMITE_ROTULOS ? events.filter((e) => e.nivel_importancia === 5) : [];
+  const perto = altitude <= ALTITUDE_LIMITE_3D;
+  const eventosCom3D = perto ? events : [];
+  // Longe, todo evento vira um marcador 2D. Perto, o modelo 3D assume a forma
+  // e so' os eventos de maior destaque mantem rotulo de texto.
+  const eventosComMarcador2D = perto
+    ? events.filter(
+        (e) => altitude <= ALTITUDE_LIMITE_ROTULOS && e.nivel_importancia === 5,
+      )
+    : events;
 
   return (
     <GlobeGL
       ref={globeRef}
-      globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-      bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+      globeTileEngineUrl={urlDoTile}
+      globeTileEngineMaxLevel={GIBS_NIVEL_MAX}
       backgroundColor="#00000000"
       showAtmosphere
-      atmosphereColor="#3a7bd5"
-      atmosphereAltitude={0.18}
+      atmosphereColor="#5b9bd5"
+      atmosphereAltitude={0.16}
       onZoom={(pov) => onZoom(pov.altitude)}
-      pointsData={events}
-      pointLat="displayLat"
-      pointLng="displayLng"
-      pointAltitude={(e) => alturaPorImportancia((e as PositionedEvent).nivel_importancia)}
-      pointRadius={(e) => 0.2 + ((e as PositionedEvent).nivel_importancia - 1) * 0.03}
-      pointColor={(e) => CATEGORIAS[(e as PositionedEvent).categoria]?.cor ?? '#94a3b8'}
-      pointLabel={(e) => (e as PositionedEvent).titulo}
-      onPointClick={selecionarEClicar}
+      // Sem `pointsData`: a camada de pontos do react-globe.gl desenha
+      // cilindros que sobem da superficie. Com a altura codificando
+      // importancia, viravam tubos atravessando o globo — e vistos de angulo
+      // raso, riscos coloridos pela tela. A forma agora vem do modelo 3D, e a
+      // importancia, do tamanho + anel.
       ringsData={eventosComAnel}
       ringLat="displayLat"
       ringLng="displayLng"
@@ -148,7 +171,9 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       objectsData={eventosCom3D}
       objectLat="displayLat"
       objectLng="displayLng"
-      objectAltitude={(e) => alturaPorImportancia((e as PositionedEvent).nivel_importancia)}
+      // Altitude 0: o modelo fica assentado no chao. Antes ele era erguido
+      // junto com o cilindro e parecia flutuar no topo de um poste.
+      objectAltitude={0}
       objectLabel={(e) => (e as PositionedEvent).titulo}
       objectThreeObject={(d) => {
         const evento = d as PositionedEvent;
@@ -161,18 +186,34 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
         return modelo;
       }}
       onObjectClick={selecionarEClicar}
-      htmlElementsData={eventosComRotulo}
+      htmlElementsData={eventosComMarcador2D}
       htmlLat="displayLat"
       htmlLng="displayLng"
-      htmlAltitude={(e) => alturaPorImportancia((e as PositionedEvent).nivel_importancia) + 0.06}
+      htmlAltitude={0.01}
       htmlElement={(d) => {
         const evento = d as PositionedEvent;
+        const cor = CATEGORIAS[evento.categoria]?.cor ?? '#94a3b8';
         const el = document.createElement('div');
         el.className = 'globe-marker';
-        const texto = document.createElement('span');
-        texto.className = 'globe-marker__texto';
-        texto.textContent = evento.titulo;
-        el.appendChild(texto);
+
+        if (perto) {
+          const texto = document.createElement('span');
+          texto.className = 'globe-marker__texto';
+          texto.textContent = evento.titulo;
+          el.appendChild(texto);
+        } else {
+          // Marcador 2D: um disco que sempre encara a camera. Nitido em
+          // qualquer zoom e sem geometria 3D, entao nao vira "cano".
+          const ponto = document.createElement('span');
+          ponto.className = 'globe-marker__ponto';
+          const tamanho = 7 + evento.nivel_importancia * 2;
+          ponto.style.width = `${tamanho}px`;
+          ponto.style.height = `${tamanho}px`;
+          ponto.style.background = cor;
+          ponto.style.boxShadow = `0 0 ${tamanho}px ${cor}`;
+          el.appendChild(ponto);
+        }
+
         el.addEventListener('click', (clickEvent) => {
           clickEvent.stopPropagation();
           selecionarEClicar(evento);

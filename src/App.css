@@ -156,10 +156,13 @@
   gap: 3px;
 }
 
-.legend__barra {
-  width: 6px;
+.legend__itens--bolinhas {
+  align-items: center;
+}
+
+.legend__bolinha {
   background: #9ca3af;
-  border-radius: 2px;
+  border-radius: 50%;
   display: inline-block;
 }
 
@@ -172,6 +175,14 @@
   align-items: center;
   cursor: pointer;
   pointer-events: auto;
+}
+
+/* Marcador 2D do zoom distante: encara sempre a camera, entao nunca vira
+   volume 3D na tela. */
+.globe-marker__ponto {
+  display: block;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
 }
 
 .globe-marker__texto {

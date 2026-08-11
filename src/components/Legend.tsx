@@ -18,11 +18,14 @@ export default function Legend() {
         </div>
       </div>
       <div className="legend__secao">
-        <span className="legend__label">Importância (altura)</span>
-        <div className="legend__itens">
+        <span className="legend__label">Importância (tamanho)</span>
+        <div className="legend__itens legend__itens--bolinhas">
           {NIVEIS_IMPORTANCIA.map((nivel) => (
             <div key={nivel} className="legend__item">
-              <span className="legend__barra" style={{ height: 4 + nivel * 3 }} />
+              <span
+                className="legend__bolinha"
+                style={{ width: 5 + nivel * 2, height: 5 + nivel * 2 }}
+              />
               <span>{nivel}</span>
             </div>
           ))}

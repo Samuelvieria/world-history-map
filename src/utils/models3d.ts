@@ -18,12 +18,33 @@ function malha(geometria: THREE.BufferGeometry, cor: string, y = 0): THREE.Mesh 
   return m;
 }
 
-function espada(cor: string): THREE.Object3D {
+function umaEspada(cor: string): THREE.Object3D {
   const grupo = new THREE.Group();
-  grupo.add(malha(new THREE.ConeGeometry(0.09, 0.3, 4), cor, 1.45));
-  grupo.add(malha(new THREE.BoxGeometry(0.14, 1.1, 0.045), cor, 0.85));
-  grupo.add(malha(new THREE.BoxGeometry(0.55, 0.11, 0.09), '#d1d5db', 0.28));
-  grupo.add(malha(new THREE.CylinderGeometry(0.075, 0.075, 0.36, 8), '#3f3f46', -0.02));
+  grupo.add(malha(new THREE.ConeGeometry(0.11, 0.26, 4), cor, 1.0));
+  grupo.add(malha(new THREE.BoxGeometry(0.19, 0.78, 0.07), cor, 0.48));
+  grupo.add(malha(new THREE.BoxGeometry(0.52, 0.12, 0.12), '#d1d5db', 0.07));
+  grupo.add(malha(new THREE.CylinderGeometry(0.075, 0.075, 0.3, 8), '#3f3f46', -0.13));
+  return grupo;
+}
+
+function espadasCruzadas(cor: string): THREE.Object3D {
+  // Uma espada sozinha e' alta e fina (proporcao ~8:1): vista de angulo raso
+  // vira um risco na tela — o mesmo defeito dos cilindros que foram tirados.
+  // Duas espadas em X tem massa horizontal, entao lem como simbolo de qualquer
+  // angulo. E' tambem o que o VISUAL.md pedia para esta categoria.
+  const grupo = new THREE.Group();
+  const inclinacao = Math.PI / 5;
+
+  const esquerda = umaEspada(cor);
+  esquerda.rotation.z = inclinacao;
+  grupo.add(esquerda);
+
+  const direita = umaEspada(cor);
+  direita.rotation.z = -inclinacao;
+  grupo.add(direita);
+
+  // Leve giro do par inteiro para nunca ficar exatamente de perfil.
+  grupo.rotation.y = Math.PI / 6;
   return grupo;
 }
 
@@ -116,7 +137,7 @@ export function criarModeloParaEvento(evento: PositionedEvent): THREE.Object3D {
 
   switch (evento.categoria) {
     case 'batalha':
-      return espada(cor);
+      return espadasCruzadas(cor);
     case 'construcao':
       return predio(cor);
     case 'naval':
