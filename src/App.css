@@ -166,23 +166,36 @@
   display: inline-block;
 }
 
-/* Rótulo de texto por cima dos eventos de maior destaque (a forma/ícone da
-   categoria já vem do modelo 3D — ver utils/models3d.ts). Overlay HTML, não
-   texto 3D nativo, pra ter suporte completo a acentuação. */
+/* Marcador do evento: ícone 2D em SVG (utils/icones.ts), não mais modelo 3D.
+   Overlay HTML, então encara sempre a câmera e tem acentuação correta. */
 .globe-marker {
-  transform: translate(-50%, -100%);
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
+  gap: 7px;
   cursor: pointer;
   pointer-events: auto;
 }
 
-/* Marcador 2D do zoom distante: encara sempre a camera, entao nunca vira
-   volume 3D na tela. */
-.globe-marker__ponto {
-  display: block;
+.globe-marker__icone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  background: rgba(10, 12, 18, 0.82);
+  border: 1.5px solid currentColor;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.65);
+  flex: none;
+  transition: transform 0.12s ease;
+}
+
+.globe-marker:hover .globe-marker__icone {
+  transform: scale(1.18);
+}
+
+.globe-marker--ativo .globe-marker__icone {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: #fff;
 }
 
 .globe-marker__texto {
@@ -197,6 +210,81 @@
 
 .globe-marker:hover .globe-marker__texto {
   background: rgba(30, 31, 38, 0.9);
+}
+
+/* Breadcrumb do drill-down (mundo › continente › país › estado) */
+.breadcrumb {
+  position: absolute;
+  top: 66px;
+  left: 24px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: min(420px, 60vw);
+}
+
+.breadcrumb__trilha {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  background: rgba(17, 18, 23, 0.78);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
+.breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.breadcrumb__sep {
+  color: #6b7280;
+  margin: 0 3px;
+}
+
+.breadcrumb__link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #9ca3af;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.breadcrumb__link:hover {
+  color: #f3f4f6;
+}
+
+.breadcrumb__atual {
+  color: #f3f4f6;
+  font-weight: 500;
+}
+
+.breadcrumb__carregando {
+  color: #6b7280;
+  margin-left: 6px;
+  font-style: italic;
+}
+
+/* Deixa explícito que a fronteira é a de hoje, não a do período escolhido. */
+.breadcrumb__ressalva {
+  font-size: 10px;
+  color: #6b7280;
+  padding-left: 12px;
+}
+
+.breadcrumb__aviso {
+  font-size: 10px;
+  color: #fbbf24;
+  padding-left: 12px;
 }
 
 /* Filtro de importância */

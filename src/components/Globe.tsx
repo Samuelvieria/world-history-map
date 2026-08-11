@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import GlobeGL, { type GlobeMethods } from 'react-globe.gl';
 import type { PositionedEvent } from '../utils/geo';
 import { CATEGORIAS } from '../utils/categorias';
-import { criarModeloParaEvento } from '../utils/models3d';
+import { svgDaCategoria } from '../utils/icones';
+import type { Feicao } from '../utils/geojson';
 
 function corParaRgb(hex: string): string {
   const valor = parseInt(hex.replace('#', ''), 16);
@@ -43,22 +44,33 @@ export interface GlobeHandle {
   flyTo: (lat: number, lng: number, altitude?: number) => void;
 }
 
-// Level-of-detail por altitude da camera (VISUAL.md). Longe: so' marcador 2D,
-// que e' leve e sempre nitido. Perto: modelo 3D da categoria. Mais perto
-// ainda: rotulo de texto nos eventos de maior destaque.
-const ALTITUDE_LIMITE_3D = 1.6;
-const ALTITUDE_LIMITE_ROTULOS = 1.0;
-
 interface GlobeProps {
   events: PositionedEvent[];
-  altitude: number;
+  /** Regioes clicaveis do nivel atual do drill-down. */
+  regioes: Feicao[];
+  rotuloDaRegiao: (f: Feicao) => string;
+  /** Cor de preenchimento da regiao, em rgba. */
+  corDaRegiao: (f: Feicao) => string;
+  /** Mostrar o titulo ao lado do icone (so' onde nao vira amontoado). */
+  mostrarRotulos: boolean;
   selectedId: string | null;
   onSelectEvent: (event: PositionedEvent) => void;
+  onSelectRegiao: (f: Feicao) => void;
   onZoom: (altitude: number) => void;
 }
 
 const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
-  { events, altitude, selectedId, onSelectEvent, onZoom },
+  {
+    events,
+    regioes,
+    rotuloDaRegiao,
+    corDaRegiao,
+    mostrarRotulos,
+    selectedId,
+    onSelectEvent,
+    onSelectRegiao,
+    onZoom,
+  },
   ref,
 ) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
@@ -99,7 +111,7 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
         75,
         75,
       );
-      const material = new THREE.MeshPhongMaterial({ map: textura, transparent: true, opacity: 0.4 });
+      const material = new THREE.MeshPhongMaterial({ map: textura, transparent: true, opacity: 0.35 });
       cloudsMesh = new THREE.Mesh(geometria, material);
       globe.scene().add(cloudsMesh);
 
@@ -131,16 +143,6 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     (e) => e.nivel_importancia >= 4 || e.id === selectedId,
   );
 
-  const perto = altitude <= ALTITUDE_LIMITE_3D;
-  const eventosCom3D = perto ? events : [];
-  // Longe, todo evento vira um marcador 2D. Perto, o modelo 3D assume a forma
-  // e so' os eventos de maior destaque mantem rotulo de texto.
-  const eventosComMarcador2D = perto
-    ? events.filter(
-        (e) => altitude <= ALTITUDE_LIMITE_ROTULOS && e.nivel_importancia === 5,
-      )
-    : events;
-
   return (
     <GlobeGL
       ref={globeRef}
@@ -151,11 +153,25 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       atmosphereColor="#5b9bd5"
       atmosphereAltitude={0.16}
       onZoom={(pov) => onZoom(pov.altitude)}
-      // Sem `pointsData`: a camada de pontos do react-globe.gl desenha
-      // cilindros que sobem da superficie. Com a altura codificando
-      // importancia, viravam tubos atravessando o globo — e vistos de angulo
-      // raso, riscos coloridos pela tela. A forma agora vem do modelo 3D, e a
-      // importancia, do tamanho + anel.
+      // Regioes clicaveis do drill-down (continente -> pais -> estado).
+      // Altitude baixinha e cor quase transparente: a malha serve de alvo de
+      // clique e de contorno, sem tapar o relevo dos tiles.
+      polygonsData={regioes}
+      polygonGeoJsonGeometry={(f) =>
+        // O .d.ts do react-globe.gl declara `coordinates: number[]`, mas
+        // GeoJSON de Polygon e' number[][][] e de MultiPolygon e'
+        // number[][][][] — a tipagem publicada esta' errada. Em runtime a
+        // geometria e' repassada intacta ao three-globe, que espera o GeoJSON
+        // de verdade; o cast so' contorna o tipo incorreto.
+        (f as Feicao).geometry as unknown as { type: string; coordinates: number[] }
+      }
+      polygonAltitude={0.006}
+      polygonCapColor={(f) => corDaRegiao(f as Feicao)}
+      polygonSideColor={() => 'rgba(90, 155, 213, 0.05)'}
+      polygonStrokeColor={() => 'rgba(190, 220, 255, 0.55)'}
+      polygonLabel={(f) => rotuloDaRegiao(f as Feicao)}
+      onPolygonClick={(f) => onSelectRegiao(f as Feicao)}
+      polygonsTransitionDuration={300}
       ringsData={eventosComAnel}
       ringLat="displayLat"
       ringLng="displayLng"
@@ -168,50 +184,40 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       ringMaxRadius={(e: object) => ((e as PositionedEvent).id === selectedId ? 4.5 : 3)}
       ringPropagationSpeed={1.2}
       ringRepeatPeriod={1800}
-      objectsData={eventosCom3D}
-      objectLat="displayLat"
-      objectLng="displayLng"
-      // Altitude 0: o modelo fica assentado no chao. Antes ele era erguido
-      // junto com o cilindro e parecia flutuar no topo de um poste.
-      objectAltitude={0}
-      objectLabel={(e) => (e as PositionedEvent).titulo}
-      objectThreeObject={(d) => {
-        const evento = d as PositionedEvent;
-        const modelo = criarModeloParaEvento(evento);
-        // Modelos autorados em ~1-1.8 unidades; GLOBE_RADIUS do three-globe é
-        // uma constante fixa (100), então a escala é um valor absoluto
-        // calibrado visualmente, não derivado do raio do globo.
-        const escala = 1.4 + (evento.nivel_importancia - 1) * 0.5;
-        modelo.scale.set(escala, escala, escala);
-        return modelo;
-      }}
-      onObjectClick={selecionarEClicar}
-      htmlElementsData={eventosComMarcador2D}
+      // Marcadores: icone 2D em SVG, nao mais modelo 3D. Geometria 3D ficava
+      // refem do angulo da camera (uma espada de perfil virava um risco);
+      // o icone 2D encara sempre o observador e le igual de qualquer posicao.
+      htmlElementsData={events}
       htmlLat="displayLat"
       htmlLng="displayLng"
-      htmlAltitude={0.01}
+      htmlAltitude={0.012}
       htmlElement={(d) => {
         const evento = d as PositionedEvent;
         const cor = CATEGORIAS[evento.categoria]?.cor ?? '#94a3b8';
-        const el = document.createElement('div');
-        el.className = 'globe-marker';
+        const tamanho = 15 + evento.nivel_importancia * 3;
+        const selecionado = evento.id === selectedId;
 
-        if (perto) {
+        const el = document.createElement('div');
+        el.className = `globe-marker${selecionado ? ' globe-marker--ativo' : ''}`;
+        el.title = evento.titulo;
+
+        const disco = document.createElement('span');
+        disco.className = 'globe-marker__icone';
+        disco.style.color = cor;
+        disco.style.width = `${tamanho}px`;
+        disco.style.height = `${tamanho}px`;
+        disco.innerHTML = svgDaCategoria(evento.categoria, Math.round(tamanho * 0.62));
+        el.appendChild(disco);
+
+        // No mundo e no continente ha' eventos demais para caber texto: os
+        // rotulos se sobrepoem e um tapa o outro. So' nos niveis internos,
+        // onde sobram poucos eventos, o titulo aparece; fora dai vale o
+        // tooltip nativo (title) no hover.
+        if (mostrarRotulos) {
           const texto = document.createElement('span');
           texto.className = 'globe-marker__texto';
           texto.textContent = evento.titulo;
           el.appendChild(texto);
-        } else {
-          // Marcador 2D: um disco que sempre encara a camera. Nitido em
-          // qualquer zoom e sem geometria 3D, entao nao vira "cano".
-          const ponto = document.createElement('span');
-          ponto.className = 'globe-marker__ponto';
-          const tamanho = 7 + evento.nivel_importancia * 2;
-          ponto.style.width = `${tamanho}px`;
-          ponto.style.height = `${tamanho}px`;
-          ponto.style.background = cor;
-          ponto.style.boxShadow = `0 0 ${tamanho}px ${cor}`;
-          el.appendChild(ponto);
         }
 
         el.addEventListener('click', (clickEvent) => {

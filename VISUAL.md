@@ -119,27 +119,76 @@ oferecer a 2 como tema alternativo depois.
 
 ## Estado da implementação (Fase 0)
 
-O que já está no ar, versus o que fica pra depois:
+### Marcadores: ícone 2D, não modelo 3D
 
-- **Feito:** cor por categoria, altura do cilindro por importância, anel
-  pulsante nos eventos de importância máxima e no evento selecionado, legenda
-  de categoria + importância, busca com voo de câmera, timeline de duas
-  alças, colisão de coordenadas idênticas resolvida com afastamento circular.
-- **Modelos 3D — genéricos, não GLB baixado:** em vez de baixar assets prontos
-  (Poly Pizza/Kenney/Quaternius — exigiria verificar licença de cada arquivo
-  antes de usar), os modelos são construídos com geometria primitiva do
-  Three.js direto no código (`src/utils/models3d.ts`): espada (batalha),
-  prédio genérico (construção/religioso), barco (naval/override), coroa
-  (político), livro (cultural), bússola (descoberta), marcador esférico sóbrio
-  (desastre — de propósito, sem ícone lúdico). Um campo opcional `modelo3D` no
-  evento troca o modelo genérico da categoria por um específico quando vale a
-  pena (`piramide` nas Pirâmides de Gizé, `pessoa` no Código de Hamurábi,
-  `barco` na chegada de Colombo). Aparecem em zoom médio/perto (LOD por
-  altitude da câmera), com o texto do evento só nos de importância máxima e
-  zoom próximo. Trocar por GLB de verdade continua um upgrade futuro válido,
-  só não dá pra fazer isso sem checar a licença de cada arquivo.
-- **Adiado (precisa de mais trabalho antes de fazer certo):**
-  - Arcos/paths (campanhas, rotas, migrações) — faz sentido quando tivermos
-    eventos com origem+destino nos dados.
-  - Fronteiras históricas por era (Polygons layer) — depende de um dataset
-    GeoJSON aberto por ano, com licença confirmada (ver CLAUDE.md). Fase 3.
+Os modelos 3D procedurais foram **removidos** (`utils/models3d.ts` não existe
+mais). Motivo: geometria 3D fica refém do ângulo da câmera — uma espada vista
+de perfil virava um risco na tela, o mesmo defeito dos cilindros. Hoje cada
+categoria tem um ícone SVG inline (`utils/icones.ts`), que encara sempre o
+observador, é nítido em qualquer zoom, não depende de fonte de emoji e não faz
+requisição externa.
+
+A camada de pontos do react-globe.gl também saiu: ela desenha cilindros, e com
+altura codificando importância eles viravam tubos atravessando o globo.
+Importância agora é **tamanho do ícone** + anel pulsante (o anel é plano).
+
+### Mapa: tiles da NASA, não textura fixa
+
+`BlueMarble_ShadedRelief_Bathymetry` via NASA GIBS (domínio público), com
+relevo de continente e de fundo de oceano, sem nuvens e sem ruas modernas.
+Detalhe cresce com o zoom (≈65.536 px no nível máximo, contra 4.096 px da
+textura fixa anterior). Nível 8 é o teto desta camada — o 9 responde HTTP 400.
+
+### Navegação hierárquica (drill-down)
+
+Mundo → continente → país → estado, sempre no globo (zoom animado + breadcrumb),
+com fronteiras do Natural Earth. Cada nível filtra por importância mínima
+(5 / 4 / 3 / 1) e recorta geograficamente por ponto-em-polígono.
+
+Duas decisões que valem manter:
+
+- **O recorte de um continente é o conjunto dos seus países**, não a feição
+  clicada. Sem isso, "América do Norte" listava eventos da Europa.
+- **Identificador e rótulo são campos separados** (`nome` em inglês, `rotulo`
+  em português). A camada de estados casa pelo campo `admin`, que não é
+  traduzido — usar o nome exibido para filtrar faria "Brasil" nunca casar com
+  "Brazil".
+
+**Fronteiras são as de hoje, e a interface diz isso.** Não existia "Brasil" em
+1500 nem "estados" na Alemanha de 1200: a navegação é ferramenta de busca
+geográfica, não afirmação de que a entidade existia. O breadcrumb mostra
+"Região que hoje é X (fronteira atual)".
+
+### Armadilha medida: eventos costeiros somem no teste estrito
+
+Com o Natural Earth **110m**, metade dos eventos de teste caía FORA de qualquer
+país: Colombo/Bahamas, Messina e Constantinopla. A generalização encolhe ilhas
+e recua costas — e eventos históricos são desproporcionalmente costeiros
+(portos, capitais marítimas), então isso atinge o caso comum, não o raro.
+
+Correção em duas partes: **50m** em vez de 110m (2,9 MB contra 820 KB, resolve
+8 de 9) e **tolerância de ~40 km** em `pontoNaRegiao` para o que resta —
+Istambul fica no Bósforo, um estreito que até o 50m fecha. A tolerância é
+coerente com o modelo de dados, que já assume coordenada aproximada
+(`confianca_local`).
+
+### Limitações conhecidas
+
+- **Estados só existem para parte dos países.** O Natural Earth 50m traz 294
+  estados no mundo todo; o 10m tem cobertura completa (4.596) mas pesa 39 MB,
+  inviável de baixar de uma vez. Quando o país não tem estados, o app avisa em
+  vez de mostrar tela vazia. Fatiar o 10m por país em build-time é o upgrade.
+- **`enquadrar` erra em feições que cruzam a antimeridiana** (Rússia, Fiji):
+  usa centroide de bounding box.
+- Rótulos de texto só aparecem nos níveis país/estado — no mundo eles se
+  sobrepõem e um tapa o outro.
+
+### Adiado (precisa de mais trabalho antes de fazer certo)
+
+- Arcos/paths (campanhas, rotas, migrações) — faz sentido quando tivermos
+  eventos com origem+destino nos dados.
+- Fronteiras históricas por era — depende de um dataset GeoJSON aberto por ano,
+  com licença confirmada (ver CLAUDE.md). Fase 3. É o que tornaria a navegação
+  historicamente correta, em vez de apenas rotulada como moderna.
+- Modelos 3D em GLB de verdade (Poly Pizza/Kenney/Quaternius) continuam um
+  caminho válido para LOD alto, mas exigem verificar a licença de cada arquivo.

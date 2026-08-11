@@ -176,3 +176,44 @@ uma heurística explícita, não uma solução do passo 4.
 
 **Requisito de ambiente:** `gliner` exige **Python >= 3.10** — o Python 3.9 que
 vem no macOS não serve.
+
+---
+
+## DECISÃO — como resolver o passo 4 (relação/evento)
+
+Reavaliação feita depois da medição, com dois dados que mudam o raciocínio:
+
+**1. Custo deixou de ser argumento.** Um livro de 500 mil caracteres leva
+**~16 minutos** (868 parágrafos × 1,08 s, CPU arm64). A ideia de cascata
+"filtro barato → modelo caro" não se justifica por economia. Se a cascata
+entrar, tem que ser por qualidade.
+
+**2. O gargalo é só o passo 4.** Entidades saem a 0,82–0,93; eventos, a 0,39
+ou nada.
+
+**Escolhido: mineração de texto + regras, sem LLM.** Determinístico, auditável
+e mantém a restrição "sem LLM generativo". Recall menor que um LLM, mas a
+revisão humana já é parte do desenho — e dá pra medir antes de escalar.
+
+O que a mineração contribui, que o GLiNER não dá:
+
+- **Estrutura do livro** — capítulo "A Guerra do Peloponeso" faz todo evento
+  ali herdar contexto temporal e geográfico. Ataca o passo 4 diretamente.
+- **Índice remissivo** — livro de história costuma ter índice onomástico e
+  toponímico: é lista de entidades curada por humano, já no arquivo.
+- **Importância por espaço dedicado** — hoje `nivel_importancia` é chute
+  subjetivo; nº de menções e páginas dedicadas é proxy auditável.
+- **Correferência básica** — "A cidade, hoje chamada Istambul…" gerou um
+  candidato espúrio no teste; resolver "a cidade" → Constantinopla elimina
+  essa classe de erro.
+
+**Avaliado e descartado por ora — GLiREL** (v1.2.1, zero-shot relation
+extraction, encoder). Seria a opção "puro encoder" para o passo 4, mas todos
+os modelos no HuggingFace estão com 0 downloads e nenhum declara suporte
+multilíngue. Aposta arriscada para português; testar antes de adotar.
+
+**Se um dia a regra "sem LLM" for relaxada**, a forma segura é o LLM receber
+apenas os spans já ancorados e devolver **IDs de span**, com validação
+rejeitando ID inexistente. Isso torna a alucinação de *fato* estruturalmente
+impossível; sobra o erro de *agrupamento*, que é visível na revisão e não
+corrompe a proveniência. É uma diferença de natureza, não de grau.
