@@ -2,8 +2,31 @@
 # Versoes travadas nas que foram efetivamente medidas — ver ingestao/README.md.
 gliner==0.2.28
 
+# PDF -> texto (passo 1, "nao e' IA" — so' extracao, sem inferencia nenhuma).
+pymupdf==1.26.5
+
 # Vem como dependencia transitiva do gliner; anotadas para referencia do que
 # foi instalado durante a medicao:
 #   torch==2.13.0  transformers==5.13.1  onnxruntime==1.28.0
 #   tokenizers==0.22.2  safetensors==0.8.0  sentencepiece==0.2.2
 #   huggingface_hub==1.26.0  numpy==2.5.1
+#
+# MEDIDO: `pip install -r requirements.txt` sozinho traz o torch CPU-only do
+# PyPI (`2.13.0+cpu`), mesmo numa maquina com GPU NVIDIA — nao e' automatico.
+# Sem CUDA, ingestao de PDF real mediu ~41s/pagina (livro de 270 paginas ~= 3h
+# de CPU). Se tiver GPU NVIDIA, troque o torch DEPOIS de instalar este
+# arquivo:
+#   ./.venv/Scripts/pip install torch==2.13.0+cu126 --index-url https://download.pytorch.org/whl/cu126
+# (cu126 e' compativel com qualquer driver que suporte CUDA >= 12.6 — o
+# runtime do wheel roda sobre driver mais novo sem problema. Ver driver com
+# `nvidia-smi`.) Alem disso, `GLiNER.from_pretrained` tem `map_location='cpu'`
+# como padrao mesmo com CUDA disponivel — `extracao/extrator.py` detecta e
+# passa `map_location='cuda'` quando aplicavel; sem esse ajuste no codigo, a
+# GPU fica instalada e sem uso.
+#
+# MEDIDO numa RTX 3060 (8GB, driver WDDM): carregar o modelo na GPU custa
+# ~180s (contra poucos segundos na CPU) — mas isso e' UMA VEZ por processo.
+# Depois disso, processamento real caiu de ~8s/pagina (CPU, 4 chamadas
+# predict_entities por pagina) para ~0,45s/pagina — ~18x mais rapido no
+# regime permanente. Um livro de 270 paginas: ~3h em CPU vira ~5 min em GPU
+# (180s de carga + 264 paginas uteis x 0,45s).

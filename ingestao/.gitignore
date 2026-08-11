@@ -1,3 +1,10 @@
 .venv/
 __pycache__/
 *.pyc
+
+# Livros de amostra tem direito autoral — nunca comitar o PDF nem a saida da
+# ingestao (o JSON guarda `trecho` verbatim em cada Proveniencia, de proposito
+# interno; ver CLAUDE.md sobre nao expor trecho-fonte). paragrafo_teste.txt
+# fica de fora da regra por ser sintetico, escrito para o projeto.
+amostras/*.pdf
+amostras/saida_*.json

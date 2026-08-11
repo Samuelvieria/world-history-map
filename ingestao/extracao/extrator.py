@@ -1,9 +1,10 @@
-"""Passo 1 do IA.md: texto -> entidades tipadas com span -> EventoCandidato.
+"""Passos 1, 6 e 7 do IA.md: texto -> entidades tipadas com span ->
+EventoCandidato, com data normalizada e resumo por template.
 
 O que este modulo NAO faz, de proposito:
-  - nao gera texto (GLiNER so' marca spans que existem no original);
+  - nao gera texto (GLiNER so' marca spans que existem no original; o resumo
+    e' slot-filling por template, nunca geracao livre — ver extracao.resumo);
   - nao resolve coordenada (geocoding e' stub — passo 5);
-  - nao normaliza data (passo 6);
   - nao decide o que entra no mapa (passo 8, revisao humana).
 
 Agrupamento em eventos: uma frase => um candidato. E' uma heuristica explicita,
@@ -15,7 +16,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from .citacoes import filtrar_citacoes
+from .datas import preencher_datas
 from .modelo import CampoExtraido, EventoCandidato, Proveniencia
+from .resumo import preencher_resumo
 from .rotulos import categoria_de, e_ator, e_data, e_local, grupos_de_rotulos
 from .segmentacao import segmentar_frases
 
@@ -33,9 +37,18 @@ class ExtratorGLiNER:
 
     def _carregar(self) -> Any:
         if self._modelo is None:
+            import torch
             from gliner import GLiNER  # import tardio: carregar torch custa segundos
 
-            self._modelo = GLiNER.from_pretrained(self.nome_modelo)
+            # `from_pretrained` carrega em CPU por padrao (map_location='cpu'
+            # e' o default do proprio gliner) mesmo com GPU disponivel — nao
+            # e' automatico. MEDIDO: 4 chamadas predict_entities (uma pagina)
+            # ~40s em CPU, ~3s numa RTX 3060 — a diferenca importa demais pra
+            # deixar no default. Custo unico por processo: carregar na GPU
+            # leva mais tempo (~180s medido) que na CPU, mas isso e' pago uma
+            # vez, nao por pagina — compensa a partir da segunda pagina.
+            dispositivo = "cuda" if torch.cuda.is_available() else "cpu"
+            self._modelo = GLiNER.from_pretrained(self.nome_modelo, map_location=dispositivo)
         return self._modelo
 
     def entidades_cruas(self, texto: str) -> list[dict[str, Any]]:
@@ -49,6 +62,11 @@ class ExtratorGLiNER:
         entidades: list[dict[str, Any]] = []
         for rotulos, limiar in grupos_de_rotulos().values():
             entidades.extend(modelo.predict_entities(texto, rotulos, threshold=limiar))
+
+        # MEDIDO numa revisao real: "(CARDOSO, 1999)" virava data de zigurate,
+        # "(KEMP, 1987)" virava data de piramide — ano de citacao bibliografica
+        # lido como ano do evento. Ver extracao/citacoes.py.
+        entidades = filtrar_citacoes(entidades, texto)
 
         for ent in entidades:
             faltando = _CHAVES_ESPERADAS - set(ent)
@@ -113,6 +131,10 @@ class ExtratorGLiNER:
                     candidato.datas_brutas.append(campo)
 
             candidatos.append(candidato)
+
+        for candidato in candidatos:
+            preencher_datas(candidato)
+            preencher_resumo(candidato)
 
         return candidatos
 

@@ -212,8 +212,151 @@ extraction, encoder). Seria a opção "puro encoder" para o passo 4, mas todos
 os modelos no HuggingFace estão com 0 downloads e nenhum declara suporte
 multilíngue. Aposta arriscada para português; testar antes de adotar.
 
+---
+
+## STATUS — passo 1 real (PDF) implementado e MEDIDO contra dois livros inteiros
+
+`ingestao/extracao/pdf.py` (PyMuPDF + normalização NFKC) e
+`ingestao/ingerir_pdf.py` fecham o passo 1 de verdade — antes o pipeline só
+recebia texto já digitado à mão. Rodado contra dois livros reais em
+`ingestao/amostras/`: *História Antiga* (Beltrão/Davidson, 270 páginas) e
+*História Moderna* (Dauwe, 192 páginas).
+
+**GPU muda a viabilidade do projeto.** Medido sem GPU: ~8s/página (CPU,
+4 chamadas GLiNER por página) — um livro de 270 páginas custaria ~3h.
+Descobertas duas causas, ambas silenciosas: `pip install` sozinho traz o
+torch CPU-only mesmo com GPU NVIDIA na máquina; e `GLiNER.from_pretrained`
+tem `map_location='cpu'` como padrão, não detecta CUDA por conta própria.
+Com o torch certo (`+cu126`) e `extrator.py` passando `map_location='cuda'`
+explicitamente: **~0,45s/página em regime permanente** (~18x mais rápido) —
+carregar o modelo na GPU custa ~180s, mas isso é uma vez por processo, não
+por página. Os dois livros inteiros (462 páginas úteis): **552s (~9,2 min)**
+no total.
+
+**Números reais (não sintéticos) dos dois livros:**
+
+| | História Antiga | História Moderna |
+|---|---|---|
+| candidatos gerados | 1099 | 954 |
+| completos (campos mínimos) | 15 (1,4%) | 13 (1,4%) |
+| proveniência íntegra | 1099/1099 (100%) | 954/954 (100%) |
+| data normalizada (passo 6) | 168 (15%) | 237 (25%) |
+| resumo gerado (passo 7) | 294 (27%) | 265 (28%) |
+
+A garantia central se sustenta em escala: **100% de proveniência íntegra em
+2053 candidatos reais** — nenhum span mentiroso. A completude (1,4%) é bem
+mais baixa que no parágrafo sintético (4/5 = 80%), confirmando com dado real
+o que a seção do passo 4 já esperava: texto de livro de verdade (nota de
+rodapé, gabarito de exercício, cabeçalho de página) é muito mais confuso que
+um parágrafo escrito a dedo para o teste — a revisão humana (passo 8) não é
+opcional aqui, é o que sustenta tudo.
+
+**Exemplos reais que saíram corretos** (conferidos à mão): "Quarta Cruzada",
+`batalha`, Constantinopla, 1202 → `1202-01-01`/`ano`. "Pantheon", `cultural`,
+"século II d.C." → `0101-01-01..0200-12-31`/`seculo` (intervalo de século
+calculado certo em dado real, não só no teste).
+
+**Achado novo, corrigido**: `resumo` começava com letra minúscula quando
+tinha local mas não tinha data ("em Europa: RENASCIMENTO." em vez de "Em
+Europa: ...") — o ramo com prefixo não passava pela mesma maiusculização do
+ramo sem prefixo. Corrigido em `extracao/resumo.py`, com teste de regressão.
+
+**Gap novo, documentado, não corrigido**: "terceiro milênio antes de Cristo"
+não normaliza (fica `None`, corretamente — não inventa) porque `datas.py`
+não reconhece a unidade "milênio", só ano/década/século/data completa. Comum
+em história antiga; próximo a acrescentar no mesmo padrão dos outros
+intervalos.
+
+---
+
+## STATUS — passo 8 (fila de revisão) implementado em CLI
+
+`ingestao/revisar.py`: lê o JSON de `ingerir_pdf.py`, mostra cada candidato
+pendente com o trecho-fonte por baixo (uso interno de quem revisa — nunca
+tela do mapa) e grava aprovação/rejeição de volta a cada resposta, não só no
+fim. Testado com decisões simuladas (aprovar/rejeitar/pular/sair) contra o
+JSON real da ingestão de *História Antiga* — persistência por decisão
+confirmada campo a campo.
+
+Deliberadamente **não** grava no mapa nem converte para `HistoricalEvent`:
+falta geocoding real (passo 5, ainda stub — candidato aprovado sem `lat`/
+`lng` não tem onde aparecer) e falta o backend/banco da Fase 1 do CLAUDE.md,
+que ainda não existe. O script avisa explicitamente quantos aprovados ficam
+"presos" sem coordenada, em vez de deixar isso implícito.
+
+---
+
+## STATUS — revisão manual real de 15 candidatos completos, achado sério
+
+Revisão (por mim, como exercício de avaliar `revisar.py` — a aprovação de
+verdade continua sendo do humano, não foi gravada no arquivo real) dos 15
+candidatos "completos" de *História Antiga* contra o trecho-fonte de cada
+um: **3 aprovados, 12 rejeitados (20% de acerto)** — bem abaixo do que
+"completo" (tem todos os campos mínimos) sugere à primeira vista. Ter os 4
+campos não quer dizer que descrevem um evento de verdade.
+
+**Risco novo, não previsto nas seções anteriores**: citação bibliográfica
+"(AUTOR, ANO)" sendo lida como se `ANO` fosse a data do evento — e às vezes
+`AUTOR` como ator. 4 das 12 rejeições eram exatamente isso: zigurates "de
+1999" (na verdade `CARDOSO, 1999`, a citação do livro-fonte), pirâmides "de
+1987" (`KEMP, 1987`), "conquistas militares" "de 1990" (`DONADONI, 1990`),
+"guerra" "de 1991" (citação não identificada, mas mesmo padrão). Isso é
+sistemático — o rótulo "ano"/"data histórica" do GLiNER não distingue "ano
+que aparece dentro de uma referência bibliográfica" de "ano do evento
+narrado". Mitigação possível (não implementada, é decisão de design):
+detectar por regex o padrão `(PALAVRA, ANO)` e descartar candidato de
+data/ator cujo span cai dentro desse parêntese — regra determinística,
+mesmo espírito do resto do passo 4.
+
+**Bug encontrado**: quando uma palavra quebra entre duas linhas do PDF
+("Reino\nNovo"), o span capturado inclui a quebra de linha literal — o
+`valor` sai como `'Reino \nNovo'`, e isso vaza pro `resumo` também. Não
+corrigido ainda; precisa de cuidado para não quebrar a invariante de que
+`CampoExtraido.valor` bate exatamente com `Proveniencia.trecho` (mudar um
+sem o outro corrompe a verificação de integridade).
+
 **Se um dia a regra "sem LLM" for relaxada**, a forma segura é o LLM receber
 apenas os spans já ancorados e devolver **IDs de span**, com validação
 rejeitando ID inexistente. Isso torna a alucinação de *fato* estruturalmente
 impossível; sobra o erro de *agrupamento*, que é visível na revisão e não
 corrompe a proveniência. É uma diferença de natureza, não de grau.
+
+---
+
+## STATUS — passo 2 implementado (data normalizada + resumo), MEDIDO
+
+Código em `ingestao/extracao/datas.py` e `ingestao/extracao/resumo.py`,
+encaixado no fim de `ExtratorGLiNER.extrair()`. Detalhe em
+[`ingestao/README.md`](./ingestao/README.md#passo-2--normalização-de-data-e-resumo-novo).
+
+**Mudança de plano em relação a este documento**: passo 2 usa **regex +
+regras**, não HeidelTime nem `dateparser` como o texto acima sugeria.
+Motivo — o formato que mais aparece em história em português (ano a.C., ex.
+"2560 a.C.") não é bem coberto por nenhuma das duas: `dateparser` não modela
+esse conceito, e HeidelTime é dependência Java pesada para cobrir só cinco
+formatos de data (dia+mês+ano, mês+ano, ano isolado, década, século — com ou
+sem marcador de aproximação). Mesma lógica do passo 4: regra determinística
+e auditável em vez de biblioteca genérica, quando o problema real é estreito.
+
+Anos a.C. usam numeração astronômica ISO 8601 (ano 1 a.C. = astronômico `0`),
+para preservar ordem cronológica em comparação direta de string sem inventar
+uma convenção própria. O resumo é slot-filling puro sobre campos já
+extraídos — nunca gera texto livre, nunca copia o trecho-fonte.
+
+**Medido depois da instalação do Python** (venv + `pip install -r
+requirements.txt` + `COM_MODELO=1 python -m unittest testes`, 35/35 testes
+passando, incluindo os dois de integração que baixam o GLiNER de verdade; e
+`python spike_passo1.py` contra o parágrafo de teste): local 3/4, categoria
+4/4, data bruta 4/4 — **idêntico ao passo 1**, nada regrediu — e **data
+normalizada em 4/5 candidatos**. Os quatro normalizaram como o desenho
+previa, inclusive o caso mais delicado: `"2560 a.C."` (com "por volta de" na
+frase mas fora do span da entidade) saiu com `incerteza_data="aproximada"`,
+confirmando que buscar o marcador de aproximação numa janela de contexto ao
+redor do span — e não só dentro dele — funciona. Detalhe em
+[`ingestao/README.md`](./ingestao/README.md#passo-2--normalização-de-data-e-resumo-novo).
+
+**Achado não previsto**: o `resumo` fica redundante quando `titulo` e
+`local_nome_epoca` apontam pro mesmo span (ex.: repete "Grande Pirâmide de
+Gizé" duas vezes). Não é alucinação — o template só está mostrando fielmente
+que dois campos do candidato coincidem — mas é cosmético a corrigir quando o
+passo 4 evoluir.

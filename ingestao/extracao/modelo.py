@@ -102,8 +102,8 @@ class EventoCandidato:
     atores: list[CampoExtraido] = field(default_factory=list)
     datas_brutas: list[CampoExtraido] = field(default_factory=list)
 
-    # Preenchidos por etapas posteriores do pipeline (IA.md passos 5 e 6).
-    # Ficam None no passo 1 — geocoding e' stub por decisao explicita.
+    # Preenchidos por etapas posteriores do pipeline (IA.md passos 5, 6 e 7).
+    # lat/lng ficam None no passo 1 — geocoding e' stub por decisao explicita.
     lat: float | None = None
     lng: float | None = None
     geocoding_fonte: str | None = None
@@ -111,6 +111,10 @@ class EventoCandidato:
     data_inicio: str | None = None
     data_fim: str | None = None
     incerteza_data: str | None = None
+
+    # Preenchido pelo passo 7 (extracao.resumo) — slot-filling por template,
+    # nunca copia trecho-fonte verbatim (ver Proveniencia.trecho).
+    resumo: str | None = None
 
     status: StatusRevisao = "pendente"
 

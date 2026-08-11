@@ -55,6 +55,14 @@ def mostrar_candidato(indice: int, cand: EventoCandidato) -> None:
     linha("categoria", cand.categoria)
     linha("local_nome_epoca", cand.local_nome_epoca)
 
+    if cand.data_inicio:
+        print(
+            f"  {'data (passo 6)':<18} {cand.data_inicio} .. {cand.data_fim} "
+            f"(incerteza={cand.incerteza_data})"
+        )
+    else:
+        print(f"  {'data (passo 6)':<18} (nao normalizou nenhuma data_bruta)")
+
     if cand.atores:
         nomes = ", ".join(f"{a.valor!r}({a.confianca:.2f})" for a in cand.atores)
         print(f"  {'atores':<18} {nomes}")
@@ -79,6 +87,7 @@ def mostrar_candidato(indice: int, cand: EventoCandidato) -> None:
     print(f"  {'completo?':<18} {cand.esta_completo()}" + (f" faltando={faltando}" if faltando else ""))
     print(f"  {'proveniencia ok?':<18} {cand.proveniencia_integra()}")
     print(f"  {'status':<18} {cand.status}")
+    print(f"  {'resumo (passo 7)':<18} {cand.resumo!r}")
 
 
 def avaliar(candidatos: list[EventoCandidato]) -> None:
@@ -161,8 +170,10 @@ def main() -> None:
     avaliar(candidatos)
 
     completos = sum(c.esta_completo() for c in candidatos)
+    com_data_normalizada = sum(c.data_inicio is not None for c in candidatos)
     print(
         f"\nProntos para revisao com campos minimos: {completos}/{len(candidatos)}\n"
+        f"Com data normalizada (passo 6): {com_data_normalizada}/{len(candidatos)}\n"
         "Nenhum vai pro mapa sem aprovacao humana (passo 8)."
     )
 

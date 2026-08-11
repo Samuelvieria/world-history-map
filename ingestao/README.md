@@ -1,7 +1,9 @@
-# ingestao — passo 1 do IA.md
+# ingestao — passos 1, 6 e 7 do IA.md
 
-Spike do primeiro passo do pipeline: **texto em português → entidades tipadas
-com span → `EventoCandidato`**, sem LLM generativo e sem geocoding (stub).
+Spike do pipeline: **texto em português → entidades tipadas com span →
+`EventoCandidato`**, agora com data normalizada (`data_inicio`/`data_fim`/
+`incerteza_data`) e resumo por template — sem LLM generativo e sem geocoding
+(ainda stub, passo 5).
 
 Nada aqui escreve no mapa. A saída é uma lista de *candidatos pendentes de
 revisão humana*, por construção (ver "Decisões" abaixo).
@@ -20,10 +22,18 @@ python3.12 -m venv .venv
 
 ./.venv/bin/python -m unittest testes             # rápido, sem modelo
 COM_MODELO=1 ./.venv/bin/python -m unittest testes  # inclui integração
+
+./.venv/bin/python ingerir_pdf.py amostras/livro.pdf --paginas 5   # PDF real
 ```
 
 Primeira execução baixa `urchade/gliner_multi-v2.1` (**1,16 GB**, licença
 Apache-2.0) para o cache do HuggingFace. O venv ocupa ~940 MB.
+
+**Se tiver GPU NVIDIA, vale muito instalar o torch com CUDA** — ver nota em
+`requirements.txt`. MEDIDO numa RTX 3060: ingestão real de PDF caiu de
+~8s/página (CPU) para ~0,45s/página (GPU) no regime permanente — um livro de
+270 páginas passa de ~3h para ~5min. `extracao/extrator.py` já detecta CUDA
+automaticamente quando disponível; só falta o torch certo instalado.
 
 ## Resultado medido
 
@@ -76,6 +86,62 @@ avaliação de verdade, com texto que ninguém escolheu a dedo.
    (0.3 para evento, 0.5 para entidade). O passo 4 (relação) é mesmo o elo
    fraco, e é o que sustenta a revisão humana como obrigatória.
 
+## Passo 2 — normalização de data e resumo (novo)
+
+`extracao/datas.py` converte a data bruta extraída pelo GLiNER em
+`data_inicio`/`data_fim`/`incerteza_data`. **Decisão que diverge do IA.md
+original**: nem HeidelTime nem `dateparser`, e sim regex + regras.
+Motivo — nenhuma das duas bibliotecas cobre o caso mais comum em texto
+histórico em português, ano antes de Cristo ("2560 a.C."); `dateparser`
+não tem esse conceito, e HeidelTime é uma dependência Java pesada para
+cobrir só cinco formatos de data. Formatos reconhecidos: dia+mês+ano
+(`"exata"`), mês+ano e ano isolado (`"ano"`), década (`"decada"`), século
+em romano ou arábico (`"seculo"`), e qualquer um dos anteriores com marcador
+de aproximação ("por volta de", "cerca de") na frase ao redor → `"aproximada"`.
+Anos a.C. usam numeração astronomica ISO 8601 (ano 1 a.C. = astronômico `0`;
+"2560 a.C." = `"-2559-01-01"`), o que preserva ordem cronológica em
+comparação direta de string.
+
+`extracao/resumo.py` gera o campo `resumo` por slot-filling puro a partir dos
+campos já extraídos (`titulo`, `categoria`, `local_nome_epoca`, `data_inicio`,
+`atores`) — nunca copia o trecho-fonte e nunca introduz informação que não
+esteja em outro campo. Um candidato sem `titulo` nem `categoria` gera
+`resumo = None` em vez de um texto vazio ou inventado.
+
+Ambos os módulos são chamados automaticamente no fim de
+`ExtratorGLiNER.extrair()`.
+
+**Verificado por execução** (Python instalado depois, venv criado, `pip
+install -r requirements.txt`, `COM_MODELO=1 python -m unittest testes` — 35/35
+testes, incluindo os dois de integração que baixam o modelo de verdade — e
+`python spike_passo1.py` contra o parágrafo de teste):
+
+| Campo                     | Resultado |
+| ------------------------- | --------- |
+| local                     | 3/4 (igual ao passo 1 — nada regrediu) |
+| categoria                 | 4/4 |
+| data (raw, passo 1)       | 4/4 |
+| **data normalizada (passo 6)** | **4/5 candidatos** |
+
+Os 4 candidatos com data bruta normalizaram exatamente como o desenho previa:
+`"29 de maio de 1453"` → `1453-05-29`/`exata`; `"outubro de 1347"` →
+`1347-10-01..1347-10-31`/`ano`; `"1789"` → `1789-01-01..1789-12-31`/`ano`; e o
+caso mais delicado, `"2560 a.C."` (com "por volta de" fora do span, só na
+frase ao redor) → `-2559-01-01`/**`aproximada`** — confirma que a janela de
+contexto (`_janela_contexto`, 40 caracteres antes do span) captura o marcador
+de aproximação mesmo quando ele não faz parte da entidade extraída pelo
+GLiNER. O quinto candidato (o da frase "A cidade, hoje chamada Istambul...",
+já apontado como espúrio abaixo) não tem `titulo`/`categoria`/data — fica
+incompleto por construção, como esperado.
+
+**Observação nova, não estava prevista**: o `resumo` fica redundante quando o
+`titulo` é o mesmo span que `local_nome_epoca` (candidato da Grande Pirâmide
+de Gizé: "Grande Pirâmide de Gizé, envolvendo faraó Quéops" repete o nome).
+Não é alucinação — é o slot-filling mostrando fielmente que dois campos
+diferentes do candidato apontam pro mesmo texto — mas fica estranho de ler.
+Vale revisitar quando o passo 4 (agrupamento em evento) evoluir; por ora é
+cosmético, não corrompe proveniência nem factualidade.
+
 ## Limitações conhecidas
 
 - **Agrupamento por frase é heurística, não solução do passo 4.** "A cidade,
@@ -105,10 +171,34 @@ avaliação de verdade, com texto que ninguém escolheu a dedo.
 - O texto verbatim fica em `Proveniencia.trecho` para rastreabilidade interna
   e **nunca** deve ir para a tela (direito autoral — ver CLAUDE.md).
 
+## Passo 8 — fila de revisão (novo, em CLI)
+
+`revisar.py` lê um JSON de `ingerir_pdf.py` e mostra, um candidato por vez,
+todos os campos extraídos **com o trecho-fonte por baixo** (para conferência
+— é uso interno de quem revisa, nunca vai pra tela do mapa; ver
+`Proveniencia.trecho`). A pessoa responde aprovar/rejeitar/pular/sair; cada
+resposta é salva de volta no mesmo arquivo na hora, não só no fim — fechar o
+terminal no meio não perde o que já foi decidido.
+
+```bash
+./.venv/Scripts/python.exe revisar.py amostras/saida_historia_antiga.json --so-completos
+```
+
+**Isso não grava no mapa.** Só muda `status` para `"aprovado"`/`"rejeitado"`
+no JSON. Faltam, antes de um evento aprovado poder aparecer no globo: (a)
+geocoding de verdade (passo 5 — hoje `lat`/`lng` ficam `None`, um candidato
+aprovado sem coordenada não tem onde entrar no mapa, e o script avisa isso
+explicitamente no resumo final) e (b) o backend/banco da Fase 1 do
+`CLAUDE.md`, que ainda não existe — por ora `EventoCandidato` aprovado fica
+só no JSON, deliberadamente sem virar `HistoricalEvent` automaticamente
+(mesma separação de tipos que `modelo.py` já defende).
+
 ## Próximos passos (ordem do IA.md)
 
-2. Datas: normalizar `2560 a.C.` / `outubro de 1347` em `data_inicio`,
-   `data_fim` e `incerteza_data`; trocar a segmentação por spaCy.
-3. Geocoding real (Mordecai3 ou `geoparser` + GeoNames local).
-4. Fila de revisão + gravação no PostGIS.
+2. ~~Datas: normalizar `2560 a.C.` / `outubro de 1347`~~ feito (ver acima) —
+   falta trocar a segmentação por spaCy.
+3. Geocoding real (Mordecai3 ou `geoparser` + GeoNames local) — bloqueia
+   qualquer candidato aprovado de chegar ao mapa.
+4. ~~Fila de revisão~~ feito em CLI (ver acima) — falta gravação no PostGIS,
+   que depende do backend da Fase 1 (ainda não existe).
 5. WHG/Pleiades para nomes de época.
