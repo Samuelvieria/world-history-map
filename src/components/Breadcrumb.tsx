@@ -5,6 +5,7 @@ interface BreadcrumbProps {
   trilha: PassoNavegacao[];
   carregando: boolean;
   aviso: string | null;
+  contador: string;
   onVoltarPara: (indice: number) => void;
 }
 
@@ -12,6 +13,7 @@ export default function Breadcrumb({
   trilha,
   carregando,
   aviso,
+  contador,
   onVoltarPara,
 }: BreadcrumbProps) {
   const atual = trilha[trilha.length - 1];
@@ -35,6 +37,8 @@ export default function Breadcrumb({
           );
         })}
         {carregando && <span className="breadcrumb__carregando">carregando…</span>}
+        <span className="breadcrumb__sep">·</span>
+        <span className="breadcrumb__contador">{contador}</span>
       </div>
 
       {/* As fronteiras vem do Natural Earth e sao as de hoje. Dizer isso na

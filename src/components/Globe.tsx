@@ -1,5 +1,4 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import * as THREE from 'three';
 import GlobeGL, { type GlobeMethods } from 'react-globe.gl';
 import type { PositionedEvent } from '../utils/geo';
 import { CATEGORIAS } from '../utils/categorias';
@@ -11,18 +10,24 @@ function corParaRgb(hex: string): string {
   return `${(valor >> 16) & 255}, ${(valor >> 8) & 255}, ${valor & 255}`;
 }
 
-// Tiles da NASA GIBS (dominio publico). "Shaded relief + bathymetry" da'
-// relevo de continente E de fundo de oceano, sem nuvens e sem ruas/fronteiras
-// modernas — coerente com um globo historico, onde uma malha viaria de 2026
-// seria anacronica.
+// Tiles da NASA GIBS (dominio publico), duas camadas conforme o zoom — sem
+// nuvens e sem ruas/fronteiras modernas em nenhuma delas, coerente com um
+// globo historico, onde uma malha viaria de 2026 seria anacronica.
 //
-// Detalhe cresce com o zoom, ao contrario de uma textura fixa: no nivel
-// maximo equivale a ~65.536 px de largura, contra os 4.096 px da textura que
-// vinha antes. Carrega so' os tiles visiveis.
-//
-// Nivel 8 e' o teto DESTA camada — nivel 9 responde HTTP 400 (verificado).
-const GIBS_CAMADA = 'BlueMarble_ShadedRelief_Bathymetry';
-const GIBS_NIVEL_MAX = 8;
+// LONGE (mundo/pais): "Shaded relief + bathymetry", 500 m/pixel,
+// cobre oceano (com textura de fundo) e terra. Nivel 8 e' o teto DESTA
+// camada — nivel 9 responde HTTP 400 (verificado).
+const GIBS_CAMADA_LONGE = 'BlueMarble_ShadedRelief_Bathymetry';
+const GIBS_NIVEL_MAX_LONGE = 8;
+
+// PERTO (dentro de estado): ASTER GDEM, ~30 m/pixel (16x mais fino),
+// resolve o pixelado que aparecia ao aproximar de um estado (ex.: Brasil).
+// Verificado do mesmo jeito: nivel 12 responde 200, nivel 13 responde 400.
+// Trade-off aceito: e' relevo (DEM), NAO tem dado de oceano — mar vira cor
+// solida nesta camada. So' entra em uso alem do nivel 8, onde o usuario ja'
+// esta' dentro de um pais/estado e o oceano normalmente saiu de quadro.
+const GIBS_CAMADA_PERTO = 'ASTER_GDEM_Color_Shaded_Relief';
+const GIBS_NIVEL_MAX_PERTO = 12;
 
 // O teto de nivel e' imposto por `globeTileEngineMaxLevel` no componente, e
 // nao aqui: a assinatura exige devolver string, entao nao ha' como recusar um
@@ -30,15 +35,15 @@ const GIBS_NIVEL_MAX = 8;
 function urlDoTile(x: number, y: number, nivel: number): string {
   // REST do GIBS e' {TileMatrix}/{TileRow}/{TileCol} — ou seja, y antes de x,
   // ao contrario do padrao {z}/{x}/{y} de OSM.
+  const [camada, nivelMax] =
+    nivel > GIBS_NIVEL_MAX_LONGE
+      ? [GIBS_CAMADA_PERTO, GIBS_NIVEL_MAX_PERTO]
+      : [GIBS_CAMADA_LONGE, GIBS_NIVEL_MAX_LONGE];
   return (
-    `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${GIBS_CAMADA}` +
-    `/default/GoogleMapsCompatible_Level${GIBS_NIVEL_MAX}/${nivel}/${y}/${x}.jpeg`
+    `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${camada}` +
+    `/default/GoogleMapsCompatible_Level${nivelMax}/${nivel}/${y}/${x}.jpeg`
   );
 }
-
-const CLOUDS_URL = '//unpkg.com/three-globe/example/clouds/clouds.png';
-const CLOUDS_ALTITUDE = 0.006;
-const CLOUDS_ROTATION_DEG_POR_FRAME = -0.006;
 
 export interface GlobeHandle {
   flyTo: (lat: number, lng: number, altitude?: number) => void;
@@ -99,37 +104,6 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     return () => controls.removeEventListener('start', pararRotacao);
   }, []);
 
-  useEffect(() => {
-    const globe = globeRef.current;
-    if (!globe) return;
-
-    let cloudsMesh: THREE.Mesh | undefined;
-    let frameId: number;
-    new THREE.TextureLoader().load(CLOUDS_URL, (textura) => {
-      const geometria = new THREE.SphereGeometry(
-        globe.getGlobeRadius() * (1 + CLOUDS_ALTITUDE),
-        75,
-        75,
-      );
-      const material = new THREE.MeshPhongMaterial({ map: textura, transparent: true, opacity: 0.35 });
-      cloudsMesh = new THREE.Mesh(geometria, material);
-      globe.scene().add(cloudsMesh);
-
-      const girar = () => {
-        if (cloudsMesh) {
-          cloudsMesh.rotation.y += (CLOUDS_ROTATION_DEG_POR_FRAME * Math.PI) / 180;
-        }
-        frameId = requestAnimationFrame(girar);
-      };
-      girar();
-    });
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      if (cloudsMesh) globe.scene().remove(cloudsMesh);
-    };
-  }, []);
-
   function selecionarEClicar(dado: object) {
     const evento = dado as PositionedEvent;
     onSelectEvent(evento);
@@ -147,13 +121,13 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     <GlobeGL
       ref={globeRef}
       globeTileEngineUrl={urlDoTile}
-      globeTileEngineMaxLevel={GIBS_NIVEL_MAX}
+      globeTileEngineMaxLevel={GIBS_NIVEL_MAX_PERTO}
       backgroundColor="#00000000"
       showAtmosphere
       atmosphereColor="#5b9bd5"
       atmosphereAltitude={0.16}
       onZoom={(pov) => onZoom(pov.altitude)}
-      // Regioes clicaveis do drill-down (continente -> pais -> estado).
+      // Regioes clicaveis do drill-down (mundo -> pais -> estado).
       // Altitude baixinha e cor quase transparente: a malha serve de alvo de
       // clique e de contorno, sem tapar o relevo dos tiles.
       polygonsData={regioes}
@@ -209,8 +183,8 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
         disco.innerHTML = svgDaCategoria(evento.categoria, Math.round(tamanho * 0.62));
         el.appendChild(disco);
 
-        // No mundo e no continente ha' eventos demais para caber texto: os
-        // rotulos se sobrepoem e um tapa o outro. So' nos niveis internos,
+        // No mundo ha' eventos demais para caber texto: os rotulos se
+        // sobrepoem e um tapa o outro. So' nos niveis internos,
         // onde sobram poucos eventos, o titulo aparece; fora dai vale o
         // tooltip nativo (title) no hover.
         if (mostrarRotulos) {

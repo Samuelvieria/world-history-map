@@ -1,6 +1,6 @@
 import type { Feicao } from './geojson';
 
-export type NivelNavegacao = 'mundo' | 'continente' | 'pais' | 'estado';
+export type NivelNavegacao = 'mundo' | 'pais' | 'estado';
 
 export interface PassoNavegacao {
   nivel: NivelNavegacao;
@@ -13,11 +13,9 @@ export interface PassoNavegacao {
   /** Texto exibido ao usuario, em portugues. */
   rotulo: string;
   /**
-   * Geometrias que recortam a regiao (vazio no nivel mundo).
-   *
-   * E' uma lista, nao uma feicao unica, porque um continente e' o conjunto
-   * dos seus paises: recortar pela feicao do pais clicado faria "America do
-   * Norte" listar eventos da Europa.
+   * Geometria que recorta a regiao (vazio no nivel mundo). Lista por
+   * uniformidade com `pontoNaRegiao`/`enquadrar` (que operam sobre varias
+   * geometrias); hoje sempre 0 ou 1 feicao — o pais ou estado clicado.
    */
   recorte: Feicao[];
 }
@@ -34,7 +32,6 @@ export interface PassoNavegacao {
  */
 const IMPORTANCIA_MINIMA: Record<NivelNavegacao, number> = {
   mundo: 5,
-  continente: 4,
   pais: 3,
   estado: 1,
 };
@@ -45,7 +42,7 @@ export function importanciaMinimaDoNivel(nivel: NivelNavegacao): number {
 
 /** Proximo nivel do drill-down, ou null se ja' e' o mais fundo. */
 export function proximoNivel(nivel: NivelNavegacao): NivelNavegacao | null {
-  const ordem: NivelNavegacao[] = ['mundo', 'continente', 'pais', 'estado'];
+  const ordem: NivelNavegacao[] = ['mundo', 'pais', 'estado'];
   const i = ordem.indexOf(nivel);
   return i >= 0 && i < ordem.length - 1 ? ordem[i + 1] : null;
 }
@@ -74,6 +71,12 @@ export function rotuloDeRegiao(passo: PassoNavegacao): string {
  * No mundo os poligonos desenhados sao de PAISES, mas o clique entra no
  * continente. Pintar cada pais com a cor do seu continente deixa a agrupacao
  * visivel — sem isso o usuario clica num pais esperando entrar nele.
+ *
+ * Opacidade baixa de proposito (0.1, era 0.28): em 0.28 a cor virava uma
+ * mancha de tinta lisa sobre o relevo fotografico da NASA (Globe.tsx),
+ * competindo com ele em vez de so' indicar agrupamento. O relevo tem que
+ * continuar legivel por baixo — a cor e' so' uma pista, nao a informacao
+ * principal (essa e' o marcador do evento).
  */
 const COR_CONTINENTE: Record<string, string> = {
   Africa: '234, 179, 8',
@@ -85,7 +88,7 @@ const COR_CONTINENTE: Record<string, string> = {
   Antarctica: '148, 163, 184',
 };
 
-export function corDoContinente(continente: string, opacidade = 0.28): string {
+export function corDoContinente(continente: string, opacidade = 0.1): string {
   const rgb = COR_CONTINENTE[continente] ?? '148, 163, 184';
   return `rgba(${rgb}, ${opacidade})`;
 }

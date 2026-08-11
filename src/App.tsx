@@ -27,13 +27,12 @@ import {
 } from './utils/navegacao';
 import {
   continenteDoPais,
-  continenteEmPortugues,
   estadosDoPais,
   idDoPais,
   nomeDoEstado,
   nomeDoPais,
-  paises,
-  paisesDoContinente,
+  paisesParaMundo,
+  paisPreciso,
 } from './utils/fronteiras';
 import './App.css';
 
@@ -66,13 +65,10 @@ function App() {
         let proximas: Feicao[] = [];
 
         if (passoAtual.nivel === 'mundo') {
-          // No mundo, as regioes clicaveis sao os paises, mas o clique sobe
-          // para o continente daquele pais: e' mais facil acertar um pais com
-          // o mouse do que uma silhueta continental, e o Natural Earth nao
-          // traz poligono de continente pronto.
-          proximas = await paises();
-        } else if (passoAtual.nivel === 'continente') {
-          proximas = await paisesDoContinente(passoAtual.nome);
+          // 110m (grosseiro) so' aqui: e' o unico nivel sem recorte de
+          // evento (nao importa precisao de fronteira) e o unico que desenha
+          // ~180 poligonos ao mesmo tempo (importa MUITO o custo de vertice).
+          proximas = await paisesParaMundo();
         } else if (passoAtual.nivel === 'pais') {
           proximas = await estadosDoPais(passoAtual.nome);
           if (!proximas.length) {
@@ -149,22 +145,20 @@ function App() {
     const proximo = proximoNivel(passoAtual.nivel);
     if (!proximo) return;
 
-    // No nivel mundo o clique num pais entra no CONTINENTE dele, nao no pais.
     // `nome` filtra os dados (ingles) e `rotulo` vai pra tela (portugues).
     let nome: string;
     let rotulo: string;
     let recorte: Feicao[];
 
     if (passoAtual.nivel === 'mundo') {
-      nome = continenteDoPais(feicao);
-      rotulo = continenteEmPortugues(nome);
-      // O recorte de um continente e' o conjunto dos seus paises. Recortar
-      // pela feicao clicada faria "America do Norte" listar eventos da Europa.
-      recorte = await paisesDoContinente(nome);
-    } else if (passoAtual.nivel === 'continente') {
       nome = idDoPais(feicao);
       rotulo = nomeDoPais(feicao);
-      recorte = [feicao];
+      // O poligono clicado e' o grosseiro (110m, so' de renderizacao — ver
+      // paisesParaMundo). O recorte de evento precisa da versao precisa
+      // (50m) do MESMO pais, senao volta o bug de evento costeiro caindo
+      // fora da fronteira que `URL_PAISES` documenta.
+      const preciso = await paisPreciso(nome);
+      recorte = preciso ? [preciso] : [feicao];
     } else {
       nome = nomeDoEstado(feicao);
       rotulo = nome;
@@ -210,12 +204,9 @@ function App() {
 
   return (
     <div className="app">
-      <header className="app__header">
-        <h1>Globo Histórico Interativo</h1>
-        <span className="app__contador">
-          {eventosFiltrados.length} de {events.length} eventos
-        </span>
-      </header>
+      {/* Visivel so' para leitor de tela — o titulo da aba do navegador ja'
+          cumpre esse papel na tela; um H1 flutuante colidia com a busca. */}
+      <h1 className="visualmente-oculto">Globo Histórico Interativo</h1>
 
       <SearchBar events={events} onSelect={handleSearchSelect} />
 
@@ -238,10 +229,15 @@ function App() {
         trilha={trilha}
         carregando={carregando}
         aviso={aviso}
+        contador={`${eventosFiltrados.length} de ${events.length} eventos`}
         onVoltarPara={handleVoltarPara}
       />
 
-      <ImportanceFilter minImportancia={minImportancia} onChange={setMinImportancia} />
+      <ImportanceFilter
+        minImportancia={minImportancia}
+        pisoNivel={importanciaDoNivel}
+        onChange={setMinImportancia}
+      />
 
       <Legend />
 

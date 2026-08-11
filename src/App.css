@@ -5,28 +5,15 @@
   overflow: hidden;
 }
 
-.app__header {
+/* So' para leitor de tela — remove da renderizacao visual sem usar
+   display:none (que também some da árvore de acessibilidade). */
+.visualmente-oculto {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  padding: 16px 24px;
-  pointer-events: none;
-}
-
-.app__header h1 {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.app__contador {
-  font-size: 13px;
-  color: #9ca3af;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 .app__globe {
@@ -34,12 +21,13 @@
   inset: 0;
 }
 
-/* Busca */
+/* Busca — z-index acima do breadcrumb: o dropdown de resultado tem que
+   cobrir o que estiver por baixo (mesma regiao de tela), nunca o contrario. */
 .search-bar {
   position: absolute;
   top: 20px;
   left: 24px;
-  z-index: 10;
+  z-index: 15;
   width: min(320px, 70vw);
 }
 
@@ -212,7 +200,7 @@
   background: rgba(30, 31, 38, 0.9);
 }
 
-/* Breadcrumb do drill-down (mundo › continente › país › estado) */
+/* Breadcrumb do drill-down (mundo › país › estado) */
 .breadcrumb {
   position: absolute;
   top: 66px;
@@ -274,6 +262,11 @@
   font-style: italic;
 }
 
+.breadcrumb__contador {
+  color: #6b7280;
+  white-space: nowrap;
+}
+
 /* Deixa explícito que a fronteira é a de hoje, não a do período escolhido. */
 .breadcrumb__ressalva {
   font-size: 10px;
@@ -287,11 +280,18 @@
   padding-left: 12px;
 }
 
-/* Filtro de importância */
+/* Filtro de importância.
+ *
+ * Coluna da esquerda, embaixo do breadcrumb — NÃO no canto superior direito
+ * (onde estava antes). O painel de evento (`.event-panel`) e' ancorado a'
+ * direita com 360px de largura e z-index maior; um filtro persistente
+ * naquela faixa da tela simplesmente desaparecia atras dele sem nenhum aviso
+ * sempre que o usuario abria um evento.
+ */
 .importance-filter {
   position: absolute;
-  top: 20px;
-  right: 24px;
+  top: 140px;
+  left: 24px;
   z-index: 10;
   display: flex;
   align-items: center;
@@ -307,6 +307,10 @@
   font-size: 12px;
   color: #9ca3af;
   white-space: nowrap;
+}
+
+.importance-filter__piso {
+  color: #fbbf24;
 }
 
 .importance-filter__bar {
@@ -330,6 +334,16 @@
   background: #ef4444;
   border-color: #ef4444;
   color: white;
+}
+
+/* Segmento "ligado" pelo piso do nivel, nao pela escolha do usuario — cor
+ * diferente da selecao ativa (vermelho) pra nao passar a mensagem errada de
+ * "voce escolheu isso". Ainda clicavel: subir o minimo alem do piso continua
+ * uma escolha valida, so' nao tem efeito visivel até' o usuario aproximar. */
+.importance-filter__segment--bloqueado {
+  background: rgba(251, 191, 36, 0.22);
+  border-color: #fbbf24;
+  color: #fde68a;
 }
 
 /* Timeline */

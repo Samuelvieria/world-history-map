@@ -14,7 +14,18 @@ const BASE = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/mas
 // encolhe ilhas e recua costas. Com o 50m so' Constantinopla continua
 // escapando (fica no Bosforo, um estreito que a generalizacao fecha), e essa
 // sobra e' coberta pela tolerancia em `pontoNaRegiao`.
+//
+// Essa precisao so' importa para o RECORTE (filtrar evento por dentro da
+// fronteira) — usado a partir do nivel pais. No nivel mundo nao ha recorte
+// nenhum (so' clique pra identificar o pais), e' onde entra `URL_PAISES_MUNDO`.
 const URL_PAISES = `${BASE}/ne_50m_admin_0_countries.geojson`;
+
+// 110m (820 KB) so' para desenhar o nivel MUNDO: ~180 paises simultaneos e' o
+// maior poligono que o app desenha de uma vez, e o unico nivel sem recorte —
+// entao a fronteira grosseira nao custa precisao, so' economiza vertice.
+// MEDIDO (travamento reportado no nivel mundo): esse e' o candidato mais
+// provavel, ja' que nenhum outro nivel desenha mais que uma duzia de regioes.
+const URL_PAISES_MUNDO = `${BASE}/ne_110m_admin_0_countries.geojson`;
 
 // 50m (2,2 MB) para estados. O 10m tem cobertura completa (4.596 estados, 253
 // paises) mas pesa 39 MB — inviavel de baixar no navegador de uma vez. O 50m
@@ -66,17 +77,6 @@ export function nomeDoPais(f: Feicao): string {
   );
 }
 
-// Ja' o campo CONTINENT so' existe em ingles, e sao poucos valores fixos.
-const CONTINENTE_PT: Record<string, string> = {
-  Africa: 'África',
-  Asia: 'Ásia',
-  Europe: 'Europa',
-  'North America': 'América do Norte',
-  'South America': 'América do Sul',
-  Oceania: 'Oceania',
-  Antarctica: 'Antártida',
-};
-
 /**
  * Identificador do pais, em ingles.
  *
@@ -88,14 +88,10 @@ export function idDoPais(f: Feicao): string {
   return texto(f, 'ADMIN') || texto(f, 'NAME') || texto(f, 'name') || 'Desconhecido';
 }
 
-/** Identificador do continente (em ingles, como vem no dado). */
+/** Identificador do continente (em ingles, como vem no dado) — usado so' pra
+ * colorir o nivel mundo por agrupamento (ver `corDoContinente`). */
 export function continenteDoPais(f: Feicao): string {
   return texto(f, 'CONTINENT') || 'Desconhecido';
-}
-
-/** Nome do continente para exibicao. */
-export function continenteEmPortugues(continente: string): string {
-  return CONTINENTE_PT[continente] ?? continente;
 }
 
 export function nomeDoEstado(f: Feicao): string {
@@ -106,27 +102,29 @@ function paisDoEstado(f: Feicao): string {
   return texto(f, 'admin') || texto(f, 'ADMIN');
 }
 
+/** Paises precisos (50m) — so' para o recorte de evento, nunca para desenhar o mundo. */
 export async function paises(): Promise<Feicao[]> {
   return carregar(URL_PAISES);
 }
 
-export async function paisesDoContinente(continente: string): Promise<Feicao[]> {
+/** Paises grosseiros (110m) — o poligono clicavel do nivel mundo. */
+export async function paisesParaMundo(): Promise<Feicao[]> {
+  return carregar(URL_PAISES_MUNDO);
+}
+
+/**
+ * Versao precisa (50m) do pais identificado por `idDoPais`, para usar como
+ * recorte depois que o usuario clica no poligono grosseiro do nivel mundo.
+ *
+ * Sem isso o recorte herdaria a fronteira encolhida do 110m e o bug que
+ * `URL_PAISES` documenta (evento costeiro cai fora do pais) voltaria.
+ */
+export async function paisPreciso(nomeId: string): Promise<Feicao | undefined> {
   const todos = await paises();
-  return todos.filter((f) => continenteDoPais(f) === continente);
+  return todos.find((f) => idDoPais(f) === nomeId);
 }
 
 export async function estadosDoPais(nomePais: string): Promise<Feicao[]> {
   const todos = await carregar(URL_ESTADOS);
   return todos.filter((f) => paisDoEstado(f) === nomePais);
-}
-
-/** Continentes existentes, derivados do campo CONTINENT dos paises. */
-export async function continentes(): Promise<string[]> {
-  const todos = await paises();
-  const nomes = new Set(todos.map(continenteDoPais));
-  // "Seven seas (open ocean)" e' uma categoria do Natural Earth para ilhas
-  // oceanicas soltas; nao e' um continente navegavel.
-  nomes.delete('Seven seas (open ocean)');
-  nomes.delete('Desconhecido');
-  return [...nomes].sort();
 }
