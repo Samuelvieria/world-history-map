@@ -25,6 +25,7 @@ from extracao.citacoes import esta_dentro_de_citacao, filtrar_citacoes, spans_de
 from extracao.correlacao import candidatos_correlacionados, pontuar
 from extracao.datas import ano_legivel, normalizar as normalizar_data, preencher_datas
 from extracao.estrutura import detectar_secoes, secao_em
+from extracao.extrator import _agrupar_em_blocos, _LIMITE_CHARS_POR_BLOCO
 from extracao import gazetteer
 from extracao.geocoding import resolver as resolver_geocoding
 from extracao.modelo import CampoExtraido, EventoCandidato, Proveniencia
@@ -155,6 +156,53 @@ class TesteGeocodingComRede(unittest.TestCase):
         self.assertAlmostEqual(resultado.lat, 41.9, delta=1.0)
         self.assertAlmostEqual(resultado.lng, 12.5, delta=1.0)
         self.assertEqual(resultado.fonte, "Nominatim")
+
+
+class TesteBlocosDeExtracao(unittest.TestCase):
+    """`_agrupar_em_blocos` existe pra nunca mandar uma PAGINA inteira pro
+    GLiNER numa chamada so' — achado real (ver IA.md): a mesma frase pontua
+    bem isolada e sai com ZERO entidades junto com o resto da pagina. Testes
+    aqui sao sobre a divisao em blocos em si, sem precisar do modelo."""
+
+    def test_frases_curtas_cabem_no_mesmo_bloco(self) -> None:
+        texto = "Frase A curta. Frase B tambem curta. Frase C idem."
+        frases = segmentar_frases(texto)
+        blocos = _agrupar_em_blocos(frases)
+        self.assertEqual(blocos, [(frases[0].inicio, frases[-1].fim)])
+
+    def test_bloco_quebra_antes_de_estourar_o_limite(self) -> None:
+        frase_padrao = "Um evento qualquer aconteceu naquele ano distante. "
+        texto = frase_padrao * 40  # bem alem de _LIMITE_CHARS_POR_BLOCO
+        frases = segmentar_frases(texto)
+        blocos = _agrupar_em_blocos(frases)
+
+        self.assertGreater(len(blocos), 1)
+        # Cobertura sem buraco nem sobreposicao: primeiro bloco comeca na
+        # primeira frase, ultimo termina na ultima, blocos consecutivos.
+        self.assertEqual(blocos[0][0], frases[0].inicio)
+        self.assertEqual(blocos[-1][1], frases[-1].fim)
+        for inicio, fim in blocos:
+            self.assertLessEqual(fim - inicio, _LIMITE_CHARS_POR_BLOCO + len(frase_padrao))
+
+    def test_frase_isolada_maior_que_limite_fica_no_proprio_bloco(self) -> None:
+        """Achado real na Historia Moderna: uma pagina sem pontuacao (indice/
+        bibliografia) vira UMA frase de milhares de chars pro segmentador —
+        _agrupar_em_blocos nao quebra NO MEIO de uma frase, entao ela fica
+        sozinha no bloco dela em vez de arrastar as vizinhas curtas junto."""
+        curta_a = "Introducao breve."
+        enorme = "palavra " * 200 + "fim"  # sem pontuacao interna, so' no fim
+        curta_c = "Conclusao breve."
+        texto = f"{curta_a} {enorme}. {curta_c}"
+        frases = segmentar_frases(texto)
+        self.assertEqual(len(frases), 3)
+
+        blocos = _agrupar_em_blocos(frases)
+        self.assertEqual(len(blocos), 3)
+        for bloco, frase in zip(blocos, frases):
+            self.assertEqual(bloco, (frase.inicio, frase.fim))
+
+    def test_lista_vazia_devolve_lista_vazia(self) -> None:
+        self.assertEqual(_agrupar_em_blocos([]), [])
 
 
 class TesteGazetteerLocal(unittest.TestCase):

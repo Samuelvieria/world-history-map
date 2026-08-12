@@ -27,13 +27,46 @@ from .estrutura import detectar_secoes, secao_em
 from .modelo import CampoExtraido, EventoCandidato, Proveniencia
 from .resumo import preencher_resumo
 from .rotulos import categoria_de, e_ator, e_data, e_local, grupos_de_rotulos
-from .segmentacao import segmentar_frases
+from .segmentacao import Frase, segmentar_frases
 
 MODELO_PADRAO = "urchade/gliner_multi-v2.1"
 
 # Chaves que a sondagem (sondar_api.py) confirmou existirem na saida real do
 # GLiNER 0.2.28 — o README oficial documenta apenas `text` e `label`.
 _CHAVES_ESPERADAS = {"start", "end", "text", "label", "score"}
+
+# Chamar o GLiNER com uma PAGINA INTEIRA de uma vez (~400+ tokens) dilui o
+# score do mesmo jeito que rotulos demais numa chamada so' (rotulos.py) —
+# so' que aqui e' texto demais, nao rotulo demais. MEDIDO numa frase real
+# (Historia Antiga, pag. 50, "Dion Cassio... 229 d.C."): 5 entidades boas
+# (0.30-0.97) rodando ISOLADA, ZERO rodando junto com o resto da pagina —
+# mesmo span, mesmo texto, so' o tamanho da chamada mudou. Pagina inteira
+# tambem estoura o teto de 384 tokens do GLiNER e trunca em silencio; o
+# limite abaixo evita as duas coisas de uma vez. ~800 chars fica bem abaixo
+# de 384 tokens mesmo no pior caso medido (2015 chars ~ 423 tokens, ~4.76
+# chars/token) — margem generosa de proposito, nao o limite exato.
+_LIMITE_CHARS_POR_BLOCO = 800
+
+
+def _agrupar_em_blocos(frases: list[Frase]) -> list[tuple[int, int]]:
+    """Agrupa frases consecutivas em blocos de offset absoluto (inicio, fim)
+    com no maximo `_LIMITE_CHARS_POR_BLOCO` chars cada — nunca quebra uma
+    frase no meio. `segmentar_frases` cobre a pagina inteira sem buraco
+    (ver docstring de `Frase.contem`), entao encadear os pares inicio/fim
+    aqui preserva essa cobertura, so' em pedacos menores.
+    """
+    if not frases:
+        return []
+    blocos: list[tuple[int, int]] = []
+    inicio_bloco = frases[0].inicio
+    fim_bloco = frases[0].fim
+    for frase in frases[1:]:
+        if frase.fim - inicio_bloco > _LIMITE_CHARS_POR_BLOCO:
+            blocos.append((inicio_bloco, fim_bloco))
+            inicio_bloco = frase.inicio
+        fim_bloco = frase.fim
+    blocos.append((inicio_bloco, fim_bloco))
+    return blocos
 
 
 class ExtratorGLiNER:
@@ -85,14 +118,30 @@ class ExtratorGLiNER:
                 )
         return entidades
 
+    def _entidades_em_blocos(self, texto: str, frases: list[Frase]) -> list[dict[str, Any]]:
+        """Chama `entidades_cruas` uma vez por BLOCO de frases consecutivas
+        (nunca a pagina inteira), depois desloca `start`/`end` de volta pro
+        offset absoluto da pagina — e' esse deslocamento que preserva a
+        proveniencia (span tem que continuar indexando `texto`, nao o bloco).
+        Ver `_LIMITE_CHARS_POR_BLOCO` pro porque disso existir.
+        """
+        entidades: list[dict[str, Any]] = []
+        for inicio_bloco, fim_bloco in _agrupar_em_blocos(frases):
+            bloco = texto[inicio_bloco:fim_bloco]
+            for ent in self.entidades_cruas(bloco):
+                entidades.append(
+                    {**ent, "start": ent["start"] + inicio_bloco, "end": ent["end"] + inicio_bloco}
+                )
+        return entidades
+
     def extrair(
         self,
         texto: str,
         fonte_id: str,
         pagina: int | None = None,
     ) -> list[EventoCandidato]:
-        entidades = self.entidades_cruas(texto)
         frases = segmentar_frases(texto)
+        entidades = self._entidades_em_blocos(texto, frases)
         secoes = detectar_secoes(texto)
 
         candidatos: list[EventoCandidato] = []

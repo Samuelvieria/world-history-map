@@ -86,6 +86,14 @@ avaliação de verdade, com texto que ninguém escolheu a dedo.
    (0.3 para evento, 0.5 para entidade). O passo 4 (relação) é mesmo o elo
    fraco, e é o que sustenta a revisão humana como obrigatória.
 
+5. **Texto demais numa chamada também derruba o score — não só rótulo
+   demais.** Achado mandando uma PÁGINA inteira pro GLiNER de uma vez (o que
+   `extrator.py` fazia): a mesma frase que dá 5 entidades boas isolada dá
+   **zero** rodando junto com o resto da página — e o evento simplesmente
+   não vira candidato (nem incompleto). Corrigido processando em blocos de
+   frases (`_agrupar_em_blocos`), não a página inteira. Detalhe completo e
+   números antes/depois no IA.md.
+
 ## Passo 2 — normalização de data e resumo (novo)
 
 `extracao/datas.py` converte a data bruta extraída pelo GLiNER em

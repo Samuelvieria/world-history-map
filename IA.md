@@ -511,6 +511,58 @@ passo 4 evoluir.
 
 ---
 
+## STATUS — achado sério: chamar o GLiNER com a página inteira perdia evento
+
+Motivado por uma pergunta direta ("a extração está perdendo evento") — antes
+disso, "perder candidato" só tinha sido medido como problema de *completude*
+(campo faltando). Esta é uma causa diferente: o evento **nem chega a existir**
+como candidato, nem incompleto.
+
+**Achado, medido com uma frase real** (História Antiga, pág. 50 — Dion
+Cássio, "governo imperial... 229 d.C."): a mesma frase, mesmo texto, mesmo
+span, dá **5 entidades boas (score 0,30–0,97) rodada isolada** e **ZERO
+entidades rodada junto com o resto da página**. É o mesmo efeito já medido
+em `rotulos.py` pra rótulos demais numa chamada só (score cai ~3x por
+competição) — só que aqui é *texto* demais numa chamada, nunca medido antes.
+Confirmado também nos logs: páginas longas (>384 tokens) são **truncadas em
+silêncio** pelo GLiNER — o fim da página nem chega a ser processado.
+
+**Correção**: `extrator.py` não manda mais a página inteira pro GLiNER de
+uma vez. `_agrupar_em_blocos` (novo) agrupa frases consecutivas (via
+`segmentar_frases`, que já cobre a página sem buraco) em blocos de até 800
+chars — margem folgada abaixo do teto de 384 tokens (medido: 2015 chars ≈
+423 tokens, ~4,76 chars/token) — e `entidades_cruas` roda por bloco, com os
+spans deslocados de volta pro offset absoluto da página antes de seguir pro
+resto do pipeline. Nunca quebra uma frase no meio: uma frase sozinha maior
+que o limite (achado real na História Moderna: uma página de índice/
+bibliografia sem pontuação virou UMA frase de 4718 tokens) fica no bloco
+dela mesma, sem arrastar as vizinhas.
+
+**Medido contra os dois livros inteiros, antes/depois**:
+
+| | História Antiga (antes → depois) | História Moderna (antes → depois) |
+|---|---|---|
+| candidatos gerados | 1099 → **1472** (+34%) | 954 → **1532** (+61%) |
+| completos (campos mínimos) | 15 (1,4%) → **36 (2,4%)** | 13 (1,4%) → **57 (3,7%)** |
+| proveniência íntegra | 1099/1099 (100%) → **1472/1472 (100%)** | 954/954 (100%) → **1532/1532 (100%)** |
+| resumo gerado | 294 (27%) → **549 (37%)** | 265 (28%) → **587 (38%)** |
+
+A garantia central (proveniência íntegra) se manteve em 100% nos dois livros
+depois da mudança — o deslocamento de span de volta pro absoluto não
+corrompeu nenhuma proveniência. Custo aceito: mais chamadas menores ao
+GLiNER por página, ~1,0–1,4s/página contra ~0,45s/página antes (ainda rápido
+o bastante: os dois livros inteiros em ~4,5 min cada).
+
+**Gap residual, não resolvido de propósito**: uma frase isolada maior que o
+limite (páginas sem pontuação — índice, bibliografia, lista) ainda vai pro
+GLiNER inteira, porque `_agrupar_em_blocos` só corta *entre* frases, nunca
+no meio de uma. Continua sujeita ao mesmo truncamento/diluição de antes —
+mas essas páginas já tendem a ser não-narrativas (`estrutura.py` provavelmente
+marcaria como não-narrativo de qualquer forma), então o impacto prático é
+baixo.
+
+---
+
 ## STATUS — gazetteer local pro passo 5, mundo com prioridade sobre Brasil
 
 Motivado pelo achado da seção anterior sobre passo 5 (Nominatim resolvendo
