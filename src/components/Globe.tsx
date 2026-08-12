@@ -132,7 +132,7 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       globeTileEngineMaxLevel={GIBS_NIVEL_MAX_PERTO}
       backgroundColor="#00000000"
       showAtmosphere
-      atmosphereColor="#5b9bd5"
+      atmosphereColor="#c9a15a"
       atmosphereAltitude={0.16}
       onZoom={(pov) => onZoom({ lat: pov.lat, lng: pov.lng, altitude: pov.altitude })}
       onGlobeClick={(coords) => onClicarPontoLivre?.(coords.lat, coords.lng)}
@@ -150,8 +150,8 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       }
       polygonAltitude={0.006}
       polygonCapColor={(f) => corDaRegiao(f as Feicao)}
-      polygonSideColor={() => 'rgba(90, 155, 213, 0.05)'}
-      polygonStrokeColor={() => 'rgba(190, 220, 255, 0.55)'}
+      polygonSideColor={() => 'rgba(233, 214, 168, 0.05)'}
+      polygonStrokeColor={() => 'rgba(201, 161, 90, 0.55)'}
       polygonLabel={(f) => rotuloDaRegiao(f as Feicao)}
       onPolygonClick={(f) => onSelectRegiao(f as Feicao)}
       polygonsTransitionDuration={300}
@@ -161,7 +161,7 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       ringColor={(e: object) => {
         const evento = e as PositionedEvent;
         const selecionado = evento.id === selectedId;
-        const rgb = selecionado ? '255, 255, 255' : corParaRgb(CATEGORIAS[evento.categoria]?.cor ?? '#94a3b8');
+        const rgb = selecionado ? '201, 161, 90' : corParaRgb(CATEGORIAS[evento.categoria]?.cor ?? '#6b6858');
         return (t: number) => `rgba(${rgb}, ${1 - t})`;
       }}
       ringMaxRadius={(e: object) => ((e as PositionedEvent).id === selectedId ? 4.5 : 3)}
@@ -176,7 +176,7 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       htmlAltitude={0.012}
       htmlElement={(d) => {
         const evento = d as PositionedEvent;
-        const cor = CATEGORIAS[evento.categoria]?.cor ?? '#94a3b8';
+        const cor = CATEGORIAS[evento.categoria]?.cor ?? '#6b6858';
         const tamanho = 15 + evento.nivel_importancia * 3;
         const selecionado = evento.id === selectedId;
 

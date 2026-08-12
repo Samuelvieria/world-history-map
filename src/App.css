@@ -21,44 +21,48 @@
   inset: 0;
 }
 
+/* ---------------------------------------------------------------------
+ * Direção "Gravura" (VISUAL.md): prancha lisa com borda fio-de-cabelo,
+ * nunca vidro com blur. Cantos quase retos (2-3px), não pílula 999px.
+ * ------------------------------------------------------------------- */
+
 /* Busca — z-index acima do breadcrumb: o dropdown de resultado tem que
    cobrir o que estiver por baixo (mesma regiao de tela), nunca o contrario. */
 .search-bar {
   position: absolute;
-  top: 20px;
-  left: 24px;
+  top: 22px;
+  left: 26px;
   z-index: 15;
-  width: min(320px, 70vw);
+  width: min(300px, 70vw);
 }
 
 .search-bar__input {
   width: 100%;
-  background: rgba(17, 18, 23, 0.75);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  padding: 9px 16px;
-  color: #f3f4f6;
+  background: var(--tinta-alta);
+  border: 1px solid var(--grafite-forte);
+  border-radius: 3px;
+  padding: 10px 14px;
+  color: var(--pergaminho);
+  font-family: var(--sans);
   font-size: 13px;
   outline: none;
 }
 
 .search-bar__input:focus {
-  border-color: rgba(239, 68, 68, 0.6);
+  border-color: var(--latao);
 }
 
 .search-bar__input::placeholder {
-  color: #6b7280;
+  color: var(--pergaminho-tenue);
 }
 
 .search-bar__resultados {
   list-style: none;
   margin: 6px 0 0;
-  padding: 6px;
-  background: rgba(17, 18, 23, 0.92);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
+  padding: 4px;
+  background: var(--tinta-alta);
+  border: 1px solid var(--grafite-forte);
+  border-radius: 3px;
   overflow: hidden;
 }
 
@@ -69,16 +73,16 @@
   width: 100%;
   background: transparent;
   border: none;
-  border-radius: 8px;
-  padding: 8px 10px;
-  color: #f3f4f6;
+  padding: 9px 10px;
+  color: var(--pergaminho);
+  font-family: var(--sans);
   font-size: 13px;
   text-align: left;
   cursor: pointer;
 }
 
 .search-bar__resultado:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(233, 214, 168, 0.06);
 }
 
 .search-bar__resultado-titulo {
@@ -88,7 +92,8 @@
 }
 
 .search-bar__resultado-ano {
-  color: #9ca3af;
+  font-family: var(--mono);
+  color: var(--pergaminho-fraca);
   white-space: nowrap;
 }
 
@@ -96,44 +101,54 @@
 .legend {
   position: absolute;
   bottom: 130px;
-  left: 24px;
+  left: 26px;
   z-index: 10;
   display: flex;
-  gap: 20px;
-  background: rgba(17, 18, 23, 0.75);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 10px 14px;
-  font-size: 11px;
-  color: #9ca3af;
+  gap: 22px;
+  background: var(--tinta-alta);
+  border: 1px solid var(--grafite-forte);
+  border-radius: 3px;
+  padding: 12px 16px;
 }
 
 .legend__label {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--pergaminho-fraca);
 }
 
 .legend__categorias {
   display: flex;
-  gap: 6px;
+  gap: 7px;
 }
 
 .legend__categoria-icone {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  font-size: 10px;
+  border: 1.5px solid var(--cor, var(--slate));
+  background: transparent;
+  color: var(--pergaminho);
   cursor: default;
+}
+
+.legend__categoria-icone svg {
+  width: 11px;
+  height: 11px;
 }
 
 .legend__itens {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
+  gap: 9px;
   height: 24px;
 }
 
@@ -141,7 +156,10 @@
   display: flex;
   flex-direction: column-reverse;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--pergaminho-fraca);
 }
 
 .legend__itens--bolinhas {
@@ -149,67 +167,105 @@
 }
 
 .legend__bolinha {
-  background: #9ca3af;
+  background: var(--latao);
   border-radius: 50%;
   display: inline-block;
 }
 
-/* Marcador do evento: ícone 2D em SVG (utils/icones.ts), não mais modelo 3D.
-   Overlay HTML, então encara sempre a câmera e tem acentuação correta. */
+/* Marcador do evento: ícone 2D em SVG (utils/icones.ts), montado como
+   medalha de dois aneis — nunca circulo borrado. Overlay HTML, então
+   encara sempre a câmera e tem acentuação correta. */
 .globe-marker {
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   cursor: pointer;
   pointer-events: auto;
 }
 
 .globe-marker__icone {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(10, 12, 18, 0.82);
+  background: color-mix(in srgb, currentColor 16%, var(--tinta-baixa));
   border: 1.5px solid currentColor;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.65);
   flex: none;
-  transition: transform 0.12s ease;
+  transition: transform 0.18s ease-out;
+}
+
+.globe-marker__icone svg {
+  color: var(--pergaminho);
+}
+
+.globe-marker__icone::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  opacity: 0.4;
 }
 
 .globe-marker:hover .globe-marker__icone {
-  transform: scale(1.18);
+  transform: scale(1.14);
 }
 
-.globe-marker--ativo .globe-marker__icone {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: #fff;
+.globe-marker--ativo .globe-marker__icone::after {
+  content: '';
+  position: absolute;
+  inset: -11px;
+  border-radius: 50%;
+  border: 1px solid var(--latao);
+  opacity: 0.6;
+  animation: marcador-pulsar 2.6s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .globe-marker--ativo .globe-marker__icone::after {
+    animation: none;
+  }
+}
+
+@keyframes marcador-pulsar {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
 }
 
 .globe-marker__texto {
-  background: rgba(12, 13, 17, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-  padding: 3px 10px;
+  background: var(--tinta-baixa);
+  border: 1px solid var(--grafite-forte);
+  border-radius: 2px;
+  padding: 4px 10px 3px;
+  font-family: var(--sans);
   font-size: 11px;
   white-space: nowrap;
-  color: #f3f4f6;
+  color: var(--pergaminho);
 }
 
 .globe-marker:hover .globe-marker__texto {
-  background: rgba(30, 31, 38, 0.9);
+  border-color: var(--latao);
 }
 
 /* Breadcrumb do drill-down (mundo › país › estado) */
 .breadcrumb {
   position: absolute;
-  top: 66px;
-  left: 24px;
+  top: 70px;
+  left: 26px;
   z-index: 10;
   display: flex;
   flex-direction: column;
   gap: 3px;
   max-width: min(420px, 60vw);
+  font-family: var(--mono);
 }
 
 .breadcrumb__trilha {
@@ -217,11 +273,10 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 2px;
-  background: rgba(17, 18, 23, 0.78);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  padding: 5px 12px;
+  background: var(--tinta-alta);
+  border: 1px solid var(--grafite-forte);
+  border-radius: 3px;
+  padding: 6px 12px;
   font-size: 12px;
 }
 
@@ -232,15 +287,16 @@
 }
 
 .breadcrumb__sep {
-  color: #6b7280;
-  margin: 0 3px;
+  color: var(--pergaminho-tenue);
+  margin: 0 4px;
 }
 
 .breadcrumb__link {
   background: none;
   border: none;
   padding: 0;
-  color: #9ca3af;
+  color: var(--pergaminho-fraca);
+  font-family: var(--mono);
   font-size: 12px;
   cursor: pointer;
   text-decoration: underline;
@@ -248,35 +304,35 @@
 }
 
 .breadcrumb__link:hover {
-  color: #f3f4f6;
+  color: var(--latao);
 }
 
 .breadcrumb__atual {
-  color: #f3f4f6;
+  color: var(--latao);
   font-weight: 500;
 }
 
 .breadcrumb__carregando {
-  color: #6b7280;
+  color: var(--pergaminho-tenue);
   margin-left: 6px;
   font-style: italic;
 }
 
 .breadcrumb__contador {
-  color: #6b7280;
+  color: var(--pergaminho-tenue);
   white-space: nowrap;
 }
 
 /* Deixa explícito que a fronteira é a de hoje, não a do período escolhido. */
 .breadcrumb__ressalva {
   font-size: 10px;
-  color: #6b7280;
+  color: var(--pergaminho-tenue);
   padding-left: 12px;
 }
 
 .breadcrumb__aviso {
   font-size: 10px;
-  color: #fbbf24;
+  color: var(--latao-forte);
   padding-left: 12px;
 }
 
@@ -284,33 +340,39 @@
  *
  * Coluna da esquerda, embaixo do breadcrumb — NÃO no canto superior direito
  * (onde estava antes). O painel de evento (`.event-panel`) e' ancorado a'
- * direita com 360px de largura e z-index maior; um filtro persistente
+ * direita com 380px de largura e z-index maior; um filtro persistente
  * naquela faixa da tela simplesmente desaparecia atras dele sem nenhum aviso
  * sempre que o usuario abria um evento.
  */
 .importance-filter {
   position: absolute;
-  top: 140px;
-  left: 24px;
+  top: 142px;
+  left: 26px;
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: rgba(17, 18, 23, 0.75);
-  backdrop-filter: blur(6px);
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
+  background: var(--tinta-alta);
+  border: 1px solid var(--grafite-forte);
+  padding: 9px 14px;
+  border-radius: 3px;
 }
 
 .importance-filter__label {
-  font-size: 12px;
-  color: #9ca3af;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--pergaminho-fraca);
   white-space: nowrap;
 }
 
 .importance-filter__piso {
-  color: #fbbf24;
+  color: var(--latao-forte);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
 }
 
 .importance-filter__bar {
@@ -319,31 +381,32 @@
 }
 
 .importance-filter__segment {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+  border: 1px solid var(--grafite-forte);
   background: transparent;
-  color: #9ca3af;
+  color: var(--pergaminho-fraca);
+  font-family: var(--mono);
   font-size: 11px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .importance-filter__segment--active {
-  background: #ef4444;
-  border-color: #ef4444;
-  color: white;
+  background: var(--latao);
+  border-color: var(--latao);
+  color: var(--tinta-baixa);
 }
 
 /* Segmento "ligado" pelo piso do nivel, nao pela escolha do usuario — cor
- * diferente da selecao ativa (vermelho) pra nao passar a mensagem errada de
+ * diferente da selecao ativa (latão) pra nao passar a mensagem errada de
  * "voce escolheu isso". Ainda clicavel: subir o minimo alem do piso continua
  * uma escolha valida, so' nao tem efeito visivel até' o usuario aproximar. */
 .importance-filter__segment--bloqueado {
-  background: rgba(251, 191, 36, 0.22);
-  border-color: #fbbf24;
-  color: #fde68a;
+  background: color-mix(in srgb, var(--terra) 22%, transparent);
+  border-color: var(--terra);
+  color: var(--pergaminho);
 }
 
 /* Timeline */
@@ -354,11 +417,10 @@
   transform: translateX(-50%);
   z-index: 10;
   width: min(860px, 90vw);
-  background: rgba(17, 18, 23, 0.75);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 14px 20px 12px;
+  background: var(--tinta-alta);
+  border: 1px solid var(--grafite-forte);
+  border-radius: 3px;
+  padding: 16px 22px 14px;
 }
 
 /* Botoes de periodo: largura igual entre eles, independente de quanto tempo
@@ -366,79 +428,88 @@
  * sendo inutilmente fina numa escala linear de -10000 a 2026. */
 .timeline__periodos {
   display: flex;
-  gap: 4px;
-  margin-bottom: 10px;
+  gap: 5px;
+  margin-bottom: 14px;
   overflow-x: auto;
 }
 
 .timeline__periodo {
-  --cor-periodo: #6b7280;
+  --cor-periodo: var(--slate);
   flex: 1;
   white-space: nowrap;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 11px;
-  color: #9ca3af;
+  border: 1px solid var(--grafite-forte);
+  border-radius: 2px;
+  padding: 7px 10px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--pergaminho-fraca);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .timeline__periodo:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  color: #f3f4f6;
+  border-color: var(--latao);
+  color: var(--pergaminho);
 }
 
 .timeline__periodo--ativo {
   background: var(--cor-periodo);
   border-color: var(--cor-periodo);
-  color: white;
+  color: var(--tinta-baixa);
 }
 
 .timeline__eras {
   position: relative;
-  height: 20px;
-  margin-bottom: 6px;
+  height: 22px;
+  margin-bottom: 8px;
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
 }
 
 .timeline__era {
   position: absolute;
   top: 0;
   height: 100%;
-  border-radius: 4px;
-  opacity: 0.55;
+  opacity: 0.88;
   overflow: hidden;
+  border-right: 1px solid var(--tinta-alta);
 }
 
 .timeline__era-label {
   display: block;
-  font-size: 9px;
-  line-height: 20px;
-  padding-left: 4px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 8.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 22px;
+  padding-left: 5px;
   white-space: nowrap;
-  color: white;
+  color: rgba(16, 14, 10, 0.82);
 }
 
 .timeline__track {
   position: relative;
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.12);
-  margin: 10px 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--grafite-forte);
+  margin: 12px 0 10px;
 }
 
 .timeline__selection {
   position: absolute;
   top: 0;
   height: 100%;
-  border-radius: 3px;
-  background: #ef4444;
+  background: var(--latao);
 }
 
 .timeline__handle {
   position: absolute;
-  top: -8px;
+  top: -7px;
   left: 0;
   width: 100%;
   margin: 0;
@@ -450,29 +521,30 @@
 .timeline__handle::-webkit-slider-thumb {
   appearance: none;
   pointer-events: all;
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
-  background: white;
-  border: 2px solid #ef4444;
+  background: var(--tinta-alta);
+  border: 2px solid var(--latao);
   cursor: pointer;
 }
 
 .timeline__handle::-moz-range-thumb {
   pointer-events: all;
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
-  background: white;
-  border: 2px solid #ef4444;
+  background: var(--tinta-alta);
+  border: 2px solid var(--latao);
   cursor: pointer;
 }
 
 .timeline__labels {
   display: flex;
   justify-content: space-between;
+  font-family: var(--mono);
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--pergaminho-fraca);
 }
 
 /* Painel de evento */
@@ -482,89 +554,123 @@
   right: 0;
   bottom: 0;
   z-index: 20;
-  width: min(360px, 100vw);
-  background: rgba(12, 13, 17, 0.92);
-  backdrop-filter: blur(8px);
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 28px 24px;
+  width: min(380px, 100vw);
+  background: var(--tinta-alta);
+  border-left: 1px solid var(--grafite-forte);
+  padding: 34px 30px;
   overflow-y: auto;
 }
 
 .event-panel__close {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 20px;
+  right: 22px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--grafite-forte);
   background: transparent;
-  border: none;
-  color: #9ca3af;
-  font-size: 22px;
+  color: var(--pergaminho-fraca);
+  font-family: var(--mono);
+  font-size: 15px;
   cursor: pointer;
   line-height: 1;
 }
 
+.event-panel__close:hover {
+  border-color: var(--latao);
+  color: var(--latao);
+}
+
 .event-panel h2 {
-  font-size: 20px;
-  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 29px;
+  line-height: 1.14;
+  letter-spacing: -0.005em;
+  margin: 0 0 14px;
   padding-right: 24px;
+  text-wrap: balance;
+  color: var(--pergaminho);
 }
 
 .event-panel__categoria {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #9ca3af;
-  margin-bottom: 10px;
+  gap: 8px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--pergaminho-fraca);
+  margin-bottom: 18px;
 }
 
 .event-panel__categoria-icone {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  font-size: 10px;
+  border: 1.5px solid var(--cor, var(--slate));
+  background: transparent;
+  color: var(--pergaminho);
+  flex: none;
+}
+
+.event-panel__categoria-icone svg {
+  width: 11px;
+  height: 11px;
 }
 
 .event-panel__periodo {
+  font-family: var(--mono);
   font-size: 14px;
-  color: #fca5a5;
+  color: var(--latao-forte);
   margin-bottom: 4px;
 }
 
 .event-panel__incerteza {
-  color: #9ca3af;
+  color: var(--pergaminho-tenue);
 }
 
 .event-panel__local {
+  font-family: var(--sans);
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--pergaminho-fraca);
   margin-bottom: 16px;
 }
 
 .event-panel__resumo {
-  font-size: 14px;
+  font-family: var(--serif);
+  font-size: 16px;
   line-height: 1.6;
-  margin-bottom: 16px;
+  color: var(--pergaminho);
+  margin-bottom: 22px;
 }
 
 .event-panel__atores {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 16px;
+  gap: 7px;
+  margin-bottom: 22px;
 }
 
 .event-panel__tag {
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #d1d5db;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  padding: 5px 11px;
+  border-radius: 2px;
+  border: 1px solid var(--grafite-forte);
+  color: var(--pergaminho-fraca);
 }
 
 .event-panel__meta {
+  border-top: 1px solid var(--grafite-forte);
+  padding-top: 14px;
+  font-family: var(--mono);
   font-size: 11px;
-  color: #6b7280;
+  letter-spacing: 0.02em;
+  color: var(--pergaminho-tenue);
 }

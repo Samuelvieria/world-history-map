@@ -1,6 +1,8 @@
+import type { CSSProperties } from 'react';
 import type { HistoricalEvent } from '../types/Event';
 import { getYear, formatYear } from '../utils/date';
 import { CATEGORIAS } from '../utils/categorias';
+import { svgDaCategoria } from '../utils/icones';
 
 interface EventPanelProps {
   event: HistoricalEvent | null;
@@ -21,9 +23,11 @@ export default function EventPanel({ event, onClose }: EventPanelProps) {
       </button>
       <h2>{event.titulo}</h2>
       <p className="event-panel__categoria">
-        <span className="event-panel__categoria-icone" style={{ background: CATEGORIAS[event.categoria]?.cor }}>
-          {CATEGORIAS[event.categoria]?.icone}
-        </span>
+        <span
+          className="event-panel__categoria-icone"
+          style={{ '--cor': CATEGORIAS[event.categoria]?.cor } as CSSProperties}
+          dangerouslySetInnerHTML={{ __html: svgDaCategoria(event.categoria, 11) }}
+        />
         {CATEGORIAS[event.categoria]?.nome}
       </p>
       <p className="event-panel__periodo">

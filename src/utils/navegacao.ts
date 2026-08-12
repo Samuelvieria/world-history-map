@@ -92,17 +92,21 @@ export function rotuloDeRegiao(passo: PassoNavegacao): string {
  * continuar legivel por baixo — a cor e' so' uma pista, nao a informacao
  * principal (essa e' o marcador do evento).
  */
+// Paleta de pigmento da direção "Gravura" (VISUAL.md), não os tons padrão
+// do Tailwind que estavam aqui antes — cada rgb corresponde a um token de
+// cor de index.css (convertido pra rgb porque corDoContinente monta a
+// string rgba() direto, sem passar por CSS custom property).
 const COR_CONTINENTE: Record<string, string> = {
-  Africa: '234, 179, 8',
-  Asia: '239, 68, 68',
-  Europe: '59, 130, 246',
-  'North America': '168, 85, 247',
-  'South America': '34, 197, 94',
-  Oceania: '20, 184, 166',
-  Antarctica: '148, 163, 184',
+  Africa: '184, 134, 43', // --ochre
+  Asia: '138, 64, 48', // --terra
+  Europe: '69, 96, 122', // --steel
+  'North America': '122, 90, 137', // --plum
+  'South America': '63, 122, 112', // --teal
+  Oceania: '166, 139, 63', // --olive
+  Antarctica: '107, 104, 88', // --slate
 };
 
 export function corDoContinente(continente: string, opacidade = 0.1): string {
-  const rgb = COR_CONTINENTE[continente] ?? '148, 163, 184';
+  const rgb = COR_CONTINENTE[continente] ?? '107, 104, 88';
   return `rgba(${rgb}, ${opacidade})`;
 }

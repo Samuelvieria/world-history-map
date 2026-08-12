@@ -3,19 +3,21 @@ import type { Categoria } from '../types/Event';
 interface DefinicaoCategoria {
   nome: string;
   cor: string;
-  // Ícone 2D simples (Unicode), não modelo 3D — ver VISUAL.md ("Adiado").
-  // Categorias sensíveis (ex: desastre/epidemia) usam símbolo neutro de
-  // propósito: respeito antes de estética.
-  icone: string;
 }
 
+// Paleta de pigmento da direção "Gravura" (VISUAL.md) — tons desaturados,
+// nenhum é o default de uma lib de UI. Vermelho fica reservado só pra
+// batalha/guerra (semântico), não é mais "a cor da marca" usada em tudo.
+// O ícone de cada categoria é o SVG de `icones.ts` (mesmo desenho nos
+// marcadores do globo, na legenda e no painel de evento) — não existe
+// mais um glifo Unicode separado pra essas duas telas.
 export const CATEGORIAS: Record<Categoria, DefinicaoCategoria> = {
-  batalha: { nome: 'Batalha / guerra', cor: '#ef4444', icone: '⚔' },
-  construcao: { nome: 'Construção / estrutura', cor: '#f59e0b', icone: '🏛' },
-  naval: { nome: 'Naval / expedição', cor: '#3b82f6', icone: '⚓' },
-  politico: { nome: 'Político / tratado', cor: '#a855f7', icone: '👑' },
-  cultural: { nome: 'Cultural / científico', cor: '#14b8a6', icone: '📖' },
-  religioso: { nome: 'Religioso', cor: '#eab308', icone: '◈' },
-  descoberta: { nome: 'Descoberta / exploração', cor: '#06b6d4', icone: '🧭' },
-  desastre: { nome: 'Desastre / epidemia', cor: '#6b7280', icone: '●' },
+  batalha: { nome: 'Batalha / guerra', cor: '#8a4030' },
+  construcao: { nome: 'Construção / estrutura', cor: '#b8862b' },
+  naval: { nome: 'Naval / expedição', cor: '#45607a' },
+  politico: { nome: 'Político / tratado', cor: '#7a5a89' },
+  cultural: { nome: 'Cultural / científico', cor: '#3f7a70' },
+  religioso: { nome: 'Religioso', cor: '#a68b3f' },
+  descoberta: { nome: 'Descoberta / exploração', cor: '#6a9788' },
+  desastre: { nome: 'Desastre / epidemia', cor: '#6b6858' },
 };

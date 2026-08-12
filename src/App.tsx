@@ -40,6 +40,15 @@ import './App.css';
 const events = eventsData as HistoricalEvent[];
 const ALTITUDE_INICIAL = 2.2;
 
+// Zoom out alem do enquadramento da regiao atual sobe um nivel sozinho
+// (estado -> pais -> mundo), sem precisar clicar no breadcrumb. Limiar
+// RELATIVO ao enquadramento de cada regiao (nao um numero fixo): um estado
+// pequeno e' "zoom out o bastante" com uma altitude bem menor que um pais
+// grande, e um limiar fixo alto (testado antes) ficava perceptivel demais
+// pra sair de perto. 1.35x a altitude de entrada = zoom out deliberado, nao
+// o tremor natural de arrastar o globo.
+const FATOR_ZOOM_OUT = 1.35;
+
 function App() {
   const [anoInicio, setAnoInicio] = useState(ANO_MIN);
   const [anoFim, setAnoFim] = useState(ANO_MAX);
@@ -56,6 +65,13 @@ function App() {
   // frame de zoom/arraste). So' lida no momento de um clique, pra guardar
   // "de onde a pessoa estava saindo" no passo de navegacao que ela deixa.
   const camPoseRef = useRef<CameraPose>({ lat: 20, lng: 10, altitude: ALTITUDE_INICIAL });
+  // Altitude de enquadramento da regiao atual — referencia pro zoom-out
+  // relativo (FATOR_ZOOM_OUT). Atualizada sempre que a camera entra numa
+  // regiao nova (voar() e os dois lugares que trocam de pais sem chamar
+  // voar()); reajustada tambem a cada subida de nivel, pra exigir um novo
+  // zoom out proporcional antes de subir de novo (sem isso, um so' gesto de
+  // zoom out em cascata saltaria estado -> mundo direto, pulando pais).
+  const altitudeEntradaRef = useRef(ALTITUDE_INICIAL);
   const passoAtual = trilha[trilha.length - 1];
 
   // Carrega as regioes clicaveis do nivel atual.
@@ -132,17 +148,20 @@ function App() {
       // as regioes sao irmas, entao um tom neutro basta.
       passoAtual.nivel === 'mundo'
         ? corDoContinente(continenteDoPais(f))
-        : 'rgba(90, 155, 213, 0.12)',
+        : 'rgba(233, 214, 168, 0.1)',
     [passoAtual.nivel],
   );
 
   function voar(feicoes: Feicao[]) {
     if (!feicoes.length) {
+      altitudeEntradaRef.current = ALTITUDE_INICIAL;
       globeRef.current?.flyTo(20, 10, ALTITUDE_INICIAL);
       return;
     }
     const { lat, lng, extensao } = enquadrar(feicoes.map((f) => f.geometry));
-    globeRef.current?.flyTo(lat, lng, altitudePara(extensao));
+    const altitude = altitudePara(extensao);
+    altitudeEntradaRef.current = altitude;
+    globeRef.current?.flyTo(lat, lng, altitude);
   }
 
   // O poligono clicado e' o grosseiro (110m, so' de renderizacao — ver
@@ -196,6 +215,15 @@ function App() {
     voar(passo.recorte);
   }
 
+  /** Registra a altitude de referencia pro zoom-out relativo sem mover a
+   * camera — usado nos dois lugares que trocam de pais "por baixo" (clicar
+   * num evento ou buscar um evento de outro pais), onde a camera vai pro
+   * ponto exato do evento, nao pro enquadramento do pais inteiro. */
+  function registrarAltitudeDeEntrada(recorte: Feicao[]) {
+    const geometrias = recorte.map((f) => f.geometry);
+    altitudeEntradaRef.current = altitudePara(enquadrar(geometrias).extensao);
+  }
+
   /** Clique no globo que nao acertou nenhum poligono — dentro de um pais, se
    * cair em OUTRO pais, salta direto pra ele (mundo fica intacto por baixo,
    * sem precisar voltar pro mundo primeiro pra escolher outro pais). */
@@ -219,14 +247,35 @@ function App() {
 
     const passo = await construirPassoPais(paisDoEvento);
     setTrilha((atual) => [atual[0], passo]);
+    registrarAltitudeDeEntrada(passo.recorte);
     // Sem voar() aqui: o Globe.tsx ja' leva a camera pro ponto exato do
     // evento (selecionarEClicar) — isso so' sincroniza o contexto/breadcrumb
     // por baixo, pra nao ficar "olhando pra Roma com o filtro ainda no Egito".
   }
 
+  /** Zoom out alem de FATOR_ZOOM_OUT vezes o enquadramento da regiao atual
+   * sobe UM nivel sozinho (estado -> pais, pais -> mundo), sem esperar
+   * clique no breadcrumb. Nao move a camera — ao contrario de
+   * handleVoltarPara, aqui o usuario ja' esta' exatamente onde quer (foi o
+   * proprio zoom dele); restaurar a pose salva saltaria pra outro lugar do
+   * globo, o oposto do que "zoom out" deveria fazer.
+   *
+   * So' sobe UM nivel por vez: reajusta a referencia pra altitude atual a
+   * cada subida, senao um so' gesto continuo de zoom out disparava as duas
+   * subidas em cascata (estado direto pro mundo, pulando pais). */
+  function handleZoom(pose: CameraPose) {
+    camPoseRef.current = pose;
+    if (passoAtual.nivel !== 'mundo' && pose.altitude >= altitudeEntradaRef.current * FATOR_ZOOM_OUT) {
+      altitudeEntradaRef.current = pose.altitude;
+      setTrilha((atual) => atual.slice(0, -1));
+      setSelectedEvent(null);
+    }
+  }
+
   function handleVoltarPara(indice: number) {
     const alvo = trilha[indice];
     if (alvo.camera) {
+      altitudeEntradaRef.current = alvo.camera.altitude;
       globeRef.current?.flyTo(alvo.camera.lat, alvo.camera.lng, alvo.camera.altitude);
     } else {
       voar(alvo.recorte);
@@ -262,10 +311,12 @@ function App() {
 
     const paisDoEvento = await paisQueContemPonto(evento.lng, evento.lat);
     if (!paisDoEvento) {
+      altitudeEntradaRef.current = ALTITUDE_INICIAL;
       setTrilha(TRILHA_INICIAL); // sem pais resolvido (ex. meio do oceano) — mundo e' o unico contexto que garante mostrar o evento
     } else if (idDoPais(paisDoEvento) !== paisDoContextoAtual()) {
       const passo = await construirPassoPais(paisDoEvento);
       setTrilha((atual) => [atual[0], passo]);
+      registrarAltitudeDeEntrada(passo.recorte);
     }
   }
 
@@ -288,7 +339,7 @@ function App() {
           corDaRegiao={corDaRegiao}
           mostrarRotulos={passoAtual.nivel === 'pais' || passoAtual.nivel === 'estado'}
           onSelectRegiao={handleSelecionarRegiao}
-          onZoom={(pose) => { camPoseRef.current = pose; }}
+          onZoom={handleZoom}
           onClicarPontoLivre={handleClicarPontoLivre}
         />
       </div>

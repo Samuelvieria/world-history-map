@@ -1,6 +1,91 @@
+/* Fontes auto-hospedadas (subset latin, cobre acentuação do português) —
+   sem dependência de CDN externa, coerente com o resto do projeto rodando
+   local/offline sempre que possível. */
+@font-face {
+  font-family: 'Archivo';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/archivo-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Archivo';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/archivo-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Archivo';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/archivo-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/fraunces-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/fraunces-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plex Mono';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/plexmono-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plex Mono';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/plexmono-500.woff2') format('woff2');
+}
+
+/*
+ * Direção visual "Gravura" (ver VISUAL.md): prancha de instrumento de
+ * época sobre o globo, não vidro fosco genérico. Paleta de pigmento
+ * (tinta/latão/terra) em vez dos tons padrão do Tailwind que o projeto
+ * usava antes — cada cor abaixo foi escolhida, nenhuma é a default de uma
+ * lib.
+ */
 :root {
   color-scheme: dark;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  --tinta: #100e0a;
+  --tinta-alta: #1a170f;
+  --tinta-baixa: #0a0906;
+  --pergaminho: #e7e0d0;
+  --pergaminho-fraca: #9c9481;
+  --pergaminho-tenue: #6d6858;
+  --latao: #c9a15a;
+  --latao-forte: #e0b876;
+  --oxidada: #6a9788;
+  --terra: #8a4030;
+  --grafite: #34302446;
+  --grafite-forte: #4d4738;
+  --ochre: #b8862b;
+  --ferro: #6e4a26;
+  --steel: #45607a;
+  --plum: #7a5a89;
+  --teal: #3f7a70;
+  --olive: #a68b3f;
+  --slate: #6b6858;
+
+  --serif: 'Fraunces', 'Iowan Old Style', ui-serif, Georgia, serif;
+  --sans: 'Archivo', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'Plex Mono', 'IBM Plex Mono', ui-monospace, monospace;
+
+  font-family: var(--sans);
 }
 
 * {
@@ -16,7 +101,7 @@ body,
 }
 
 body {
-  background: #05060a;
-  color: #f3f4f6;
+  background: var(--tinta);
+  color: var(--pergaminho);
   overflow: hidden;
 }
