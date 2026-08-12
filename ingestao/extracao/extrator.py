@@ -10,6 +10,11 @@ O que este modulo NAO faz, de proposito:
 Agrupamento em eventos: uma frase => um candidato. E' uma heuristica explicita,
 nao uma solucao do passo 4 ("ligar num evento estruturado"), que o proprio
 IA.md classifica como o elo mais fraco do pipeline.
+
+Estrutura do livro (extracao.estrutura) marca cada candidato com a secao
+onde apareceu (narrativa ou nao — "Objetivos"/"Resposta Comentada" nao sao
+relato historico). So' marca, nao filtra aqui — quem decide o que fazer com
+isso e' revisar.py (ou o humano, olhando o campo).
 """
 
 from __future__ import annotations
@@ -18,6 +23,7 @@ from typing import Any
 
 from .citacoes import filtrar_citacoes
 from .datas import preencher_datas
+from .estrutura import detectar_secoes, secao_em
 from .modelo import CampoExtraido, EventoCandidato, Proveniencia
 from .resumo import preencher_resumo
 from .rotulos import categoria_de, e_ator, e_data, e_local, grupos_de_rotulos
@@ -87,6 +93,7 @@ class ExtratorGLiNER:
     ) -> list[EventoCandidato]:
         entidades = self.entidades_cruas(texto)
         frases = segmentar_frases(texto)
+        secoes = detectar_secoes(texto)
 
         candidatos: list[EventoCandidato] = []
         for frase in frases:
@@ -129,6 +136,20 @@ class ExtratorGLiNER:
                         candidato.local_nome_epoca = campo
                 elif e_data(rotulo):
                     candidato.datas_brutas.append(campo)
+
+            # A secao e' calculada pela posicao do campo ANCORA (titulo, ou
+            # o proximo disponivel), nao pelo inicio da frase inteira.
+            # MEDIDO: blocos de exercicio sem pontuacao interna (ex.
+            # "Atividade Final\nLeia o fragmento...") virjam UMA frase so'
+            # pra segmentar_frases, cujo inicio fica antes do proprio
+            # cabecalho — usar frase.inicio la' perdia 2 dos 3 casos reais
+            # que a revisao manual (ver IA.md) tinha identificado.
+            ancora = candidato.titulo or candidato.categoria or candidato.local_nome_epoca
+            if ancora is not None:
+                secao = secao_em(ancora.proveniencia.span_inicio, secoes)
+                if secao is not None:
+                    candidato.secao_titulo = secao.titulo
+                    candidato.secao_narrativa = secao.narrativa
 
             candidatos.append(candidato)
 

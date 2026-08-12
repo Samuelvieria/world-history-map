@@ -315,6 +315,154 @@ corrigido ainda; precisa de cuidado para não quebrar a invariante de que
 `CampoExtraido.valor` bate exatamente com `Proveniencia.trecho` (mudar um
 sem o outro corrompe a verificação de integridade).
 
+---
+
+## STATUS — estrutura do livro implementada (passo 4); BERTimbau e HIPE-2026 descartados
+
+`ingestao/extracao/estrutura.py`: implementa o que a seção "O que a
+mineração contribui" (acima) já previa e nunca tinha sido construído —
+"Estrutura do livro... faz todo evento ali herdar contexto temporal e
+geográfico". Detecta cabeçalho de seção por regex sobre linha isolada
+(padrão medido nos dois livros de amostra, material didático EAD: "Aula N",
+"Módulo N", "UNIDADE N", e rótulos fechados — "Objetivos", "Meta da aula",
+"Pré-requisitos", "Resposta Comentada", "Atividade Final", "Dicas",
+"Bibliografia" etc.) e classifica em narrativo/não-narrativo. Não deleta
+nada — só marca (`secao_titulo`, `secao_narrativa`); `revisar.py` esconde
+não-narrativo por padrão (`--incluir-nao-narrativo` reverte).
+
+**Confirmado**: nenhum dos dois PDFs de amostra tem sumário/bookmark
+embutido (`doc.get_toc()` devolve 0 em ambos) — a leitura de cabeçalho no
+texto plano era mesmo o único caminho, não um atalho por preguiça de
+verificar a alternativa mais fácil.
+
+**Bug real encontrado e corrigido**: a primeira versão calculava a seção
+pela posição de **início da frase inteira** (`frase.inicio`). Blocos de
+exercício sem pontuação interna (ex. "Atividade Final\nLeia o fragmento a
+seguir...") virsm UMA frase só para `segmentar_frases`, cujo início cai
+antes do próprio cabeçalho — o candidato "pirâmides" (pág. 267, o mesmo
+caso `KEMP, 1987` da seção de citação acima) não recebia `secao_titulo`
+nenhum por isso. Corrigido: a seção agora é calculada pela posição do CAMPO
+ÂNCORA (`titulo`, ou o próximo disponível), não da frase. Medido antes/depois
+numa amostra de 15 candidatos completos revisados à mão: passou de 1/15
+para os 3/15 esperados pela revisão manual original.
+
+**Pesquisa concluída sobre duas sugestões externas (BERTimbau, HIPE-2026)**:
+
+- **BERTimbau** (BERT-CRF fine-tuned no HAREM): confirmado que é encoder,
+  não LLM — compatível com a restrição. Mas **não substitui o GLiNER**:
+  exige fine-tuning supervisionado (não é zero-shot), e as categorias do
+  HAREM (PESSOA/LOCAL/ORGANIZACAO/TEMPO/VALOR + ACONTECIMENTO no cenário
+  Total) não têm a granularidade de evento histórico que o projeto precisa
+  ("cerco", "tratado", "cerco militar" como rótulos distintos). F1 real
+  medido no paper original: 83,7% (Large) / 83,1% (Base) no cenário
+  Selective, 78,5% no Total — não os "83,93%" que uma pesquisa externa
+  citou sem fonte primária confirmada. Descartado como substituto; como
+  complemento de entidade genérica, o ganho não justificaria manter dois
+  modelos.
+- **HIPE-2026** (extração de relação pessoa-lugar em texto histórico
+  multilíngue, arXiv:2606.25935): **irrelevante para o caso** — cobre
+  francês/alemão/inglês, nunca português, em jornais históricos europeus
+  (não livros didáticos). Boa parte dos sistemas participantes usa LLM
+  generativo via prompting, o que contraria a restrição do projeto. Valor
+  residual é só conceitual (a moldura "quem-esteve-onde-quando" é análoga
+  ao passo 4), não há dataset/modelo/código reaproveitável.
+
+---
+
+## STATUS — passo 5 (geocoding real) implementado, caminho barato até o globo
+
+Decisão explícita de escopo: em vez de construir a Fase 1 do CLAUDE.md
+(FastAPI + PostGIS) agora, `ingestao/publicar.py` faz a ponte mais simples
+possível — pega os `status="aprovado"` de `revisar.py`, geocodifica com
+Nominatim (`extracao/geocoding.py`, MVP do IA.md, antes stub) e funde direto
+em `src/data/events.json`, no formato que o app React já lê. Prova o loop
+completo (livro → extração → revisão → mapa) sem banco de dados.
+
+**Achado sério, medido contra os 21 aprovados reais desta sessão**: geocodificar
+nome de lugar de época com Nominatim é traiçoeiro além do que "aceitar
+imprecisão" já previa. Seis dos catorze primeiros resultados foram pra lugar
+homônimo **errado**, não impreciso — "Reino Novo" (Egito) foi pro aeroporto
+de uma cidade brasileira chamada Reino; "Quarta Cruzada"/Constantinopla foi
+pra uma RUA de mesmo nome em Buenos Aires; "Tratado descritivo do Brasil"
+(local extraído "ABC") foi pra sede da rádio australiana ABC; "Bastilha"
+(três candidatos, incluindo "Revolução Francesa") foi pra um vilarejo na
+Bretanha. Publicado uma vez, revertido do `events.json` antes de virar
+achado permanente.
+
+**Duas blindagens adicionadas, ambas medidas contra esse mesmo lote real**:
+
+1. `CONFIANCA_MINIMA = 0.5` sobre o campo `importance` do Nominatim (a única
+   confiança que a API gratuita dá — mede o quão proeminente o lugar é
+   globalmente, não se a busca achou o lugar certo pra aquele nome). Separou
+   limpo os 6 corretos (0,58–0,86) dos piores errados (0,05–0,41) nesta
+   amostra.
+2. `TAMANHO_MINIMO_NOME_LUGAR = 4` — o caso "ABC" furou o limiar de
+   confiança (0,66, alto, porque a rádio australiana é um lugar
+   genuinamente proeminente no índice do Nominatim) precisamente por ser uma
+   sigla curta e ambígua. Custo aceito: um nome de lugar histórico curto mas
+   legítimo (ex. "Ur", 2 letras) também cairia aqui — julgado pior perder um
+   acerto raro do que publicar esse tipo de erro.
+
+Resultado final: **6 de 21 aprovados publicados** (Pantheon, Mapa-múndi da
+Babilônia, Concílio de Constança, Basílica de São Pedro, Reconquista, Bula
+Intercœtera) — testado no app rodando de verdade (busca por "Pantheon",
+painel abre com localização, data e resumo corretos, zero erro de console).
+Os outros 15 ficam de fora com motivo explícito no relatório do script
+(sem data normalizada, geocoding não achou nada, confiança baixa, nome
+curto) — nunca silenciosamente.
+
+---
+
+## STATUS — correlação entre fontes implementada ("Validação por consenso")
+
+Implementa a seção "Validação por consenso" do CLAUDE.md, prevista desde o
+início e nunca construída: não guardar "a verdade", guardar asserções de
+fontes, corroborar quando fontes independentes concordam, **mostrar a
+divergência quando discordam em vez de forçar consenso**. Motivada por uma
+lacuna real — dois livros diferentes descrevendo o mesmo acontecimento
+viravam dois marcadores duplicados no mapa, sem nenhuma ligação.
+
+`extracao/correlacao.py`: pontua pares de candidatos aprovados de fontes
+diferentes por similaridade de título (Jaccard de tokens, sem acento/
+pontuação/palavras de parada) + local + sobreposição de intervalo de data.
+Só pontua — nunca funde sozinho. `correlacionar.py` mostra cada par sugerido
+(com divergência de data/local em destaque) e só grava `grupo_correlacao`
+compartilhado se um humano confirmar "juntar" — mesma régua de "a IA só
+sugere, o humano aprova" que `citacoes.py`/`revisar.py` já seguem.
+
+**Bug real achado escrevendo o teste, corrigido antes de virar problema em
+produção**: comparar as strings de data ISO direto com `<=` parecia certo
+(a.C. sempre começa com `-`, que ordena antes de d.C. por acidente feliz) mas
+dava overlap ERRADO entre duas datas a.C. de magnitude diferente —
+`"-2998-01-01"` (2999 a.C.) comparava como *menor* que `"-0499-01-01"` (500
+a.C.) por causa do dígito seguinte, o oposto da ordem cronológica real (500
+a.C. é mais recente). Corrigido convertendo pra tupla de inteiros
+`(ano, mes, dia)` antes de comparar.
+
+`publicar.py` agora agrupa aprovados por `grupo_correlacao` antes de
+converter: um grupo de 2+ fontes vira **um** evento, com título/categoria/
+local do membro de maior confiança, atores como **união** de todos os
+membros, e a data normalizada de **maior precisão** entre os membros que
+resolveram data. Corroboração por 2+ fontes ganha **+1 na importância**
+(min. 5) — sinal real de relevância histórica, não inventado. Quando os
+membros do grupo divergem em data ou local, o resumo publicado inclui a
+divergência por extenso.
+
+**Medido**: os dois livros de amostra não se sobrepõem tematicamente
+(História Antiga = Mesopotâmia/Egito; História Moderna = Renascimento em
+diante) — `correlacionar.py` contra os dois corretamente não sugere NENHUM
+par (verdadeiro negativo, não falta de teste). A fusão foi comprovada de
+ponta a ponta com um par sintético construído a mão ("Queda de
+Constantinopla" em duas fontes fictícias, com data e atores levemente
+diferentes): resumo saiu com "corroborado por 2 fontes", a divergência de
+data apareceu por extenso, a data mais precisa (exata, não "ano") foi a
+publicada, e os atores das duas fontes saíram unidos sem duplicar.
+
+**Limitação conhecida, documentada**: com 3+ arquivos a correlação é só par
+a par, sem fechamento transitivo (A~B confirmado pode não oferecer A~C ou
+B~C mesmo que C descreva o mesmo evento) — não é problema com os 2 livros de
+hoje, mas relevante se um terceiro entrar.
+
 **Se um dia a regra "sem LLM" for relaxada**, a forma segura é o LLM receber
 apenas os spans já ancorados e devolver **IDs de span**, com validação
 rejeitando ID inexistente. Isso torna a alucinação de *fato* estruturalmente

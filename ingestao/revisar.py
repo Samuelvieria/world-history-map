@@ -62,6 +62,9 @@ def mostrar(c: dict[str, Any], indice: int, total: int) -> None:
 
     print(f"  {'resumo':<14} {c['resumo']!r}")
     print(f"  {'lat/lng':<14} {c['lat']}, {c['lng']} (fonte={c['geocoding_fonte']})")
+    if c.get("secao_titulo"):
+        marca = "" if c["secao_narrativa"] else "  [NAO NARRATIVO]"
+        print(f"  {'secao':<14} {c['secao_titulo']!r}{marca}")
 
     # Contexto da fonte, so' pra quem revisa — nunca vai pro mapa (ver docstring).
     ancora = c.get("titulo") or c.get("categoria") or c.get("local_nome_epoca")
@@ -81,6 +84,12 @@ def main() -> None:
     parser.add_argument(
         "--so-completos", action="store_true", help="mostra so' candidatos com titulo+categoria+local+data"
     )
+    parser.add_argument(
+        "--incluir-nao-narrativo",
+        action="store_true",
+        help="tambem mostra candidatos de secao nao-narrativa (Objetivos, Resposta Comentada etc.) — "
+        "ficam de fora por padrao, ver extracao/estrutura.py",
+    )
     args = parser.parse_args()
 
     dados: list[dict[str, Any]] = json.loads(args.arquivo.read_text(encoding="utf-8"))
@@ -89,10 +98,20 @@ def main() -> None:
         args.arquivo.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
 
     pendentes = [c for c in dados if c["status"] == "pendente"]
+    ignorados_nao_narrativo = 0
+    if not args.incluir_nao_narrativo:
+        antes = len(pendentes)
+        pendentes = [c for c in pendentes if c.get("secao_narrativa", True)]
+        ignorados_nao_narrativo = antes - len(pendentes)
     if args.so_completos:
         pendentes = [c for c in pendentes if esta_completo(c)]
 
     print(f"{len(pendentes)} candidato(s) pendente(s) de {len(dados)} no arquivo.")
+    if ignorados_nao_narrativo:
+        print(
+            f"({ignorados_nao_narrativo} de secao nao-narrativa ficaram de fora — "
+            "use --incluir-nao-narrativo pra ve-los)"
+        )
     if not pendentes:
         print("Nada para revisar.")
         return

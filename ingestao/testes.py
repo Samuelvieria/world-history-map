@@ -5,13 +5,15 @@ que mede contra gabarito) e sim das regras que, se quebrarem em silencio,
 corrompem o banco: proveniencia que nao aponta pro texto, campo criado sem
 span, e geocoding chutando coordenada.
 
-Rodam sem carregar o modelo — sao rapidos de proposito, para poderem rodar
-sempre. O teste de ponta a ponta (que baixa 1,2 GB) fica separado atras da
-variavel de ambiente COM_MODELO=1.
+Rodam sem carregar o modelo nem bater rede — sao rapidos de proposito, para
+poderem rodar sempre. O teste de ponta a ponta com GLiNER (que baixa 1,2 GB)
+fica atras de COM_MODELO=1; o de geocoding real (Nominatim, passo 5) fica
+atras de COM_REDE=1.
 
 Uso:
     ./.venv/bin/python -m unittest testes -v
     COM_MODELO=1 ./.venv/bin/python -m unittest testes -v
+    COM_REDE=1 ./.venv/bin/python -m unittest testes -v
 """
 
 from __future__ import annotations
@@ -20,7 +22,9 @@ import os
 import unittest
 
 from extracao.citacoes import esta_dentro_de_citacao, filtrar_citacoes, spans_de_citacao
+from extracao.correlacao import candidatos_correlacionados, pontuar
 from extracao.datas import ano_legivel, normalizar as normalizar_data, preencher_datas
+from extracao.estrutura import detectar_secoes, secao_em
 from extracao.geocoding import resolver as resolver_geocoding
 from extracao.modelo import CampoExtraido, EventoCandidato, Proveniencia
 from extracao.resumo import gerar_resumo
@@ -129,10 +133,27 @@ class TesteSegmentacao(unittest.TestCase):
         self.assertEqual(segmentar_frases("   "), [])
 
 
-class TesteGeocodingStub(unittest.TestCase):
-    def test_stub_nao_inventa_coordenada(self) -> None:
+@unittest.skipUnless(
+    os.environ.get("COM_REDE") == "1",
+    "define COM_REDE=1 para rodar (bate no Nominatim de verdade, rede externa)",
+)
+class TesteGeocodingComRede(unittest.TestCase):
+    """Desde que o passo 5 deixou de ser stub, testar geocoding bate rede de
+    verdade — por isso fica atras de COM_REDE=1, no mesmo espirito de
+    COM_MODELO=1: a suite rapida nunca depende de servico externo."""
+
+    def test_nome_sem_sentido_nao_inventa_coordenada(self) -> None:
         """Um lat/lng chutado seria pior que nenhum: cravaria ponto errado."""
-        self.assertIsNone(resolver_geocoding("Constantinopla"))
+        self.assertIsNone(
+            resolver_geocoding("xyzxyzxyz-lugar-que-nao-existe-de-verdade-em-lugar-nenhum")
+        )
+
+    def test_resolve_lugar_conhecido(self) -> None:
+        resultado = resolver_geocoding("Roma, Italia")
+        self.assertIsNotNone(resultado)
+        self.assertAlmostEqual(resultado.lat, 41.9, delta=1.0)
+        self.assertAlmostEqual(resultado.lng, 12.5, delta=1.0)
+        self.assertEqual(resultado.fonte, "Nominatim")
 
 
 class TesteNormalizacaoData(unittest.TestCase):
@@ -208,6 +229,151 @@ class TesteNormalizacaoData(unittest.TestCase):
         candidato = EventoCandidato(fonte_id="f1", texto_origem="sem data aqui")
         preencher_datas(candidato)
         self.assertIsNone(candidato.data_inicio)
+
+
+class TesteEstruturaDoLivro(unittest.TestCase):
+    def test_reconhece_marcador_de_licao_real(self) -> None:
+        texto = "Aula 3 – O trabalho com modelos: o Mediterrâneo\nTexto qualquer da aula aqui."
+        secoes = detectar_secoes(texto)
+        self.assertEqual(len(secoes), 1)
+        self.assertTrue(secoes[0].titulo.startswith("Aula 3"))
+        self.assertTrue(secoes[0].narrativa)
+
+    def test_reconhece_rotulo_nao_narrativo_isolado(self) -> None:
+        """Achado numa ingestao real (ver IA.md): candidatos sob 'Objetivos'
+        e 'Resposta Comentada' nao eram evento, eram aparato didatico."""
+        texto = "Algum texto antes.\nObjetivos\nEsperamos que você aprenda X."
+        secoes = detectar_secoes(texto)
+        self.assertEqual(len(secoes), 1)
+        self.assertEqual(secoes[0].titulo, "Objetivos")
+        self.assertFalse(secoes[0].narrativa)
+
+    def test_palavra_do_rotulo_dentro_de_frase_nao_dispara(self) -> None:
+        """So' conta quando a linha INTEIRA e' o rotulo — nao uma palavra
+        qualquer dentro de uma frase de narrativa comum."""
+        texto = "Os objetivos desta pesquisa incluem a análise de fontes."
+        self.assertEqual(detectar_secoes(texto), [])
+
+    def test_secao_em_acha_a_mais_proxima_antes_da_posicao(self) -> None:
+        texto = "Objetivos\nFrase 1.\nAula 4 – Roma\nFrase 2."
+        secoes = detectar_secoes(texto)
+        pos_frase1 = texto.index("Frase 1")
+        pos_frase2 = texto.index("Frase 2")
+
+        secao1 = secao_em(pos_frase1, secoes)
+        self.assertEqual(secao1.titulo, "Objetivos")
+        self.assertFalse(secao1.narrativa)
+
+        secao2 = secao_em(pos_frase2, secoes)
+        self.assertTrue(secao2.titulo.startswith("Aula 4"))
+        self.assertTrue(secao2.narrativa)
+
+    def test_posicao_antes_de_qualquer_cabecalho_e_none(self) -> None:
+        texto = "Frase antes de qualquer cabecalho.\nObjetivos\nFrase depois."
+        secoes = detectar_secoes(texto)
+        self.assertIsNone(secao_em(0, secoes))
+
+    def test_sem_cabecalho_nenhum_devolve_lista_vazia(self) -> None:
+        self.assertEqual(detectar_secoes("So' narrativa comum, sem secao nenhuma aqui."), [])
+
+    def test_bloco_sem_pontuacao_interna_precisa_de_ancora_no_campo_certo(self) -> None:
+        """Achado numa ingestao real (Historia Antiga, pag. 267): um bloco de
+        exercicio sem ponto interno ("Atividade Final\\nLeia o fragmento...")
+        vira UMA frase so' pra segmentar_frases, cujo INICIO fica antes do
+        cabeçalho. Usar o inicio da frase (em vez da posicao da entidade que
+        vira titulo) fazia a secao "Atividade Final" nao ser detectada —
+        corrigido em extrator.py usando a posicao do campo ancora, nao da
+        frase. Este teste fixa esse comportamento no nivel de secao_em."""
+        texto = (
+            "Aula 10 – Monarquia divina\n"
+            "Módulo 3\n"
+            "Atividade Final\n"
+            "Leia o fragmento: pirâmides, riqueza evidente (KEMP, 1987).\n"
+        )
+        secoes = detectar_secoes(texto)
+        pos_inicio_do_bloco = 0  # onde `frase.inicio` cairia (bug antigo)
+        pos_da_entidade_titulo = texto.index("pirâmides")  # onde o campo ancora fica
+
+        # No inicio do bloco (posicao 0), a secao vigente ainda e' o titulo da
+        # aula (narrativo) — o bug antigo pegava exatamente essa secao ERRADA
+        # pra um candidato que na verdade esta' dentro de "Atividade Final".
+        secao_no_inicio = secao_em(pos_inicio_do_bloco, secoes)
+        self.assertTrue(secao_no_inicio.narrativa)
+
+        secao_correta = secao_em(pos_da_entidade_titulo, secoes)
+        self.assertEqual(secao_correta.titulo, "Atividade Final")
+        self.assertFalse(secao_correta.narrativa)
+
+
+def _cand(titulo=None, local=None, data_inicio=None, data_fim=None):
+    """Dict minimo no formato que correlacao.py espera (o mesmo shape do JSON
+    de ingerir_pdf.py) — nao precisa da dataclass EventoCandidato inteira
+    pra testar so' a logica de pontuacao."""
+    return {
+        "titulo": {"valor": titulo} if titulo else None,
+        "local_nome_epoca": {"valor": local} if local else None,
+        "data_inicio": data_inicio,
+        "data_fim": data_fim,
+    }
+
+
+class TesteCorrelacaoEntreFontes(unittest.TestCase):
+    """CLAUDE.md, secao 'Validacao por consenso': nao guardar 'a verdade',
+    corroborar quando fontes independentes concordam. Nunca testado antes
+    porque nunca tinha sido implementado."""
+
+    def test_titulos_parecidos_e_mesma_data_corroboram(self) -> None:
+        a = _cand("Queda de Constantinopla", "Constantinopla", "1453-05-29", "1453-05-29")
+        b = _cand("A queda de Constantinopla", "Istambul", "1453-01-01", "1453-12-31")
+        self.assertGreaterEqual(pontuar(a, b), 0.5)
+
+    def test_titulos_sem_nada_em_comum_nao_corroboram(self) -> None:
+        a = _cand("Revolução Francesa", "Bastilha", "1789-01-01", "1789-12-31")
+        b = _cand("Invenção da escrita", "Baixa Mesopotâmia", "-2999-01-01", "-2999-12-31")
+        self.assertLess(pontuar(a, b), 0.5)
+
+    def test_datas_que_nao_se_cruzam_zera_a_pontuacao(self) -> None:
+        """Mesmo titulo identico nao basta se as datas normalizadas nao se
+        cruzam de jeito nenhum — sao candidatos claramente diferentes."""
+        a = _cand("Concílio", "Roma", "1414-01-01", "1414-12-31")
+        b = _cand("Concílio", "Roma", "1517-01-01", "1517-12-31")
+        self.assertEqual(pontuar(a, b), 0.0)
+
+    def test_duas_datas_a_c_de_magnitude_diferente_comparam_certo(self) -> None:
+        """Bug real achado escrevendo este teste: comparar as strings ISO
+        direto ('-2998-01-01' vs '-0499-01-01') dava overlap errado, porque
+        '0' < '2' no segundo digito inverte a ordem cronologica entre dois
+        anos a.C. de magnitude diferente. 2999 a.C. e 500 a.C. nao se cruzam
+        — tem que dar False, nao True por acidente de comparacao de string."""
+        ano_2999_ac = _cand("X", "Y", "-2998-01-01", "-2998-12-31")
+        ano_500_ac = _cand("X", "Y", "-0499-01-01", "-0499-12-31")
+        self.assertEqual(pontuar(ano_2999_ac, ano_500_ac), 0.0)
+
+    def test_falta_de_data_normalizada_e_permissivo(self) -> None:
+        """Um candidato sem data_inicio (passo 6 nao resolveu ainda) nao deve
+        ser descartado so' por isso — titulo/local seguem valendo."""
+        a = _cand("Quarta Cruzada", "Constantinopla", "1202-01-01", "1202-12-31")
+        b = _cand("Quarta Cruzada", "Constantinopla", None, None)
+        self.assertGreaterEqual(pontuar(a, b), 0.5)
+
+    def test_sem_titulo_em_algum_lado_nunca_corrobora(self) -> None:
+        a = _cand(None, "Roma", "1414-01-01", "1414-12-31")
+        b = _cand("Concílio de Constança", "Roma", "1414-01-01", "1414-12-31")
+        self.assertEqual(pontuar(a, b), 0.0)
+
+    def test_candidatos_correlacionados_filtra_e_ordena(self) -> None:
+        lista_a = [
+            _cand("Queda de Constantinopla", "Constantinopla", "1453-01-01", "1453-12-31"),
+            _cand("Invenção da escrita", "Mesopotâmia", "-2999-01-01", "-2999-12-31"),
+        ]
+        lista_b = [
+            _cand("A queda de Constantinopla", "Constantinopla", "1453-01-01", "1453-12-31"),
+            _cand("Bastilha", "Paris", "1789-01-01", "1789-12-31"),
+        ]
+        resultado = candidatos_correlacionados(lista_a, lista_b)
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0].candidato_a["titulo"]["valor"], "Queda de Constantinopla")
+        self.assertEqual(resultado[0].candidato_b["titulo"]["valor"], "A queda de Constantinopla")
 
 
 class TesteFiltroDeCitacao(unittest.TestCase):

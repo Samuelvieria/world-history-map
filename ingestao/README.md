@@ -185,20 +185,64 @@ terminal no meio não perde o que já foi decidido.
 ```
 
 **Isso não grava no mapa.** Só muda `status` para `"aprovado"`/`"rejeitado"`
-no JSON. Faltam, antes de um evento aprovado poder aparecer no globo: (a)
-geocoding de verdade (passo 5 — hoje `lat`/`lng` ficam `None`, um candidato
-aprovado sem coordenada não tem onde entrar no mapa, e o script avisa isso
-explicitamente no resumo final) e (b) o backend/banco da Fase 1 do
-`CLAUDE.md`, que ainda não existe — por ora `EventoCandidato` aprovado fica
-só no JSON, deliberadamente sem virar `HistoricalEvent` automaticamente
-(mesma separação de tipos que `modelo.py` já defende).
+no JSON. Ver `publicar.py` abaixo pro que falta depois disso.
+
+## Passo 5 (geocoding real) + ponte pro globo — caminho barato
+
+`publicar.py` pega os `status="aprovado"` de um ou mais JSONs, geocodifica
+`local_nome_epoca` com **Nominatim** (MVP do IA.md — antes stub) e funde no
+`src/data/events.json` que o app React já lê, no formato de
+`HistoricalEvent`. **Não** é a Fase 1 do CLAUDE.md (FastAPI + PostGIS) — é o
+caminho mais simples que prova o loop completo (livro → extração → revisão
+→ mapa) sem construir backend/banco ainda.
+
+```bash
+./.venv/Scripts/python.exe publicar.py amostras/saida_historia_antiga.json amostras/saida_historia_moderna.json
+```
+
+Só publica um aprovado se tiver todos os campos obrigatórios E o Nominatim
+achar coordenada com confiança suficiente — sem qualquer um desses, fica de
+fora com motivo explícito no relatório, nunca silenciosamente.
+
+**Achado sério, medido contra os 21 aprovados reais desta sessão**: geocodificar
+nome de lugar de época é traiçoeiro além do "aceitar imprecisão" que o
+IA.md já previa. 6 de 14 resultados iniciais foram pra lugar homônimo
+**errado**: "Reino Novo" (Egito) foi pro aeroporto de uma cidade brasileira
+chamada Reino; "Quarta Cruzada"/Constantinopla foi pra uma rua de mesmo nome
+em Buenos Aires; local "ABC" foi pra sede da rádio australiana ABC;
+"Bastilha" foi pra um vilarejo na Bretanha. Duas blindagens adicionadas e
+medidas contra esse mesmo lote: `CONFIANCA_MINIMA = 0.5` sobre o `importance`
+do Nominatim, e `TAMANHO_MINIMO_NOME_LUGAR = 4` (sigla como "ABC" tinha
+confiança *alta* — 0,66 — por ser um lugar real proeminente, só que errado
+pro nosso caso; confiança sozinha não bastava). Resultado: 6 de 21 publicados
+de fato, testado no app rodando (busca por "Pantheon" abre painel com
+localização/data/resumo corretos). Detalhe completo no IA.md.
+
+## Correlação entre fontes ("Validação por consenso" do CLAUDE.md)
+
+Sem isso, o mesmo acontecimento em dois livros diferentes virava dois
+marcadores duplicados no mapa. `correlacionar.py` sugere pares de aprovados
+de fontes diferentes que parecem descrever o mesmo evento (título/local/data
+— `extracao/correlacao.py`), mostra a divergência quando houver, e só liga
+os dois (`grupo_correlacao`) se um humano confirmar:
+
+```bash
+./.venv/Scripts/python.exe correlacionar.py amostras/saida_historia_antiga.json amostras/saida_historia_moderna.json
+```
+
+`publicar.py` funde cada grupo confirmado num evento só — corroborado por N
+fontes, atores unidos, data de maior precisão entre os membros, divergência
+(quando há) escrita por extenso no resumo em vez de escondida. Testado com
+par sintético de ponta a ponta (os dois livros de amostra não se sobrepõem
+tematicamente, então não geram par de verdade pra testar) — detalhe e
+exemplo real no IA.md.
 
 ## Próximos passos (ordem do IA.md)
 
 2. ~~Datas: normalizar `2560 a.C.` / `outubro de 1347`~~ feito (ver acima) —
    falta trocar a segmentação por spaCy.
-3. Geocoding real (Mordecai3 ou `geoparser` + GeoNames local) — bloqueia
-   qualquer candidato aprovado de chegar ao mapa.
-4. ~~Fila de revisão~~ feito em CLI (ver acima) — falta gravação no PostGIS,
-   que depende do backend da Fase 1 (ainda não existe).
+3. ~~Geocoding real~~ feito via Nominatim (ver acima, caminho barato) — falta
+   WHG/Pleiades pra nomes de época de verdade (item 5).
+4. ~~Fila de revisão~~ feito em CLI (ver acima) — falta gravação num banco
+   de verdade, que depende do backend da Fase 1 (ainda não existe).
 5. WHG/Pleiades para nomes de época.

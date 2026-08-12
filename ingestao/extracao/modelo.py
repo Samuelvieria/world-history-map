@@ -116,6 +116,24 @@ class EventoCandidato:
     # nunca copia trecho-fonte verbatim (ver Proveniencia.trecho).
     resumo: str | None = None
 
+    # Preenchido pela mineracao de estrutura (extracao.estrutura) — em que
+    # secao do livro o candidato apareceu. So' informativo: NUNCA alimenta
+    # titulo/categoria/local/data automaticamente (isso seria inferencia sem
+    # span proprio); serve pra revisar.py priorizar e pra dar "norte" de
+    # contexto (ex.: candidato incompleto sob "Aula 3 — o Mediterraneo" tem
+    # uma pista de regiao que o humano pode usar, a maquina nao decide por ele).
+    secao_titulo: str | None = None
+    secao_narrativa: bool = True
+
+    # Preenchido por correlacionar.py — liga candidatos de FONTES DIFERENTES
+    # (livros distintos) que um humano confirmou descreverem o mesmo
+    # acontecimento. So' um id compartilhado; nunca preenchido automaticamente
+    # (ver extracao/correlacao.py — a regra so' SUGERE o par, nunca funde
+    # sozinha). Candidatos com o mesmo grupo_correlacao viram UM evento so'
+    # na publicacao (publicar.py), corroborado por N fontes em vez de N
+    # marcadores duplicados no mapa.
+    grupo_correlacao: str | None = None
+
     status: StatusRevisao = "pendente"
 
     @property

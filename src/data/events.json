@@ -16,8 +16,13 @@
     "era": "idade_bronze",
     "categoria": "construcao",
     "modelo3D": "piramide",
-    "atores": ["Antigo Egito"],
-    "tags": ["egito_antigo", "arquitetura"]
+    "atores": [
+      "Antigo Egito"
+    ],
+    "tags": [
+      "egito_antigo",
+      "arquitetura"
+    ]
   },
   {
     "id": "evt_002",
@@ -36,8 +41,13 @@
     "era": "idade_bronze",
     "categoria": "politico",
     "modelo3D": "pessoa",
-    "atores": ["Império Babilônico"],
-    "tags": ["direito", "mesopotamia"]
+    "atores": [
+      "Império Babilônico"
+    ],
+    "tags": [
+      "direito",
+      "mesopotamia"
+    ]
   },
   {
     "id": "evt_003",
@@ -55,8 +65,13 @@
     "nivel_importancia": 2,
     "era": "idade_ferro",
     "categoria": "construcao",
-    "atores": ["Roma"],
-    "tags": ["roma_antiga", "fundacao"]
+    "atores": [
+      "Roma"
+    ],
+    "tags": [
+      "roma_antiga",
+      "fundacao"
+    ]
   },
   {
     "id": "evt_004",
@@ -74,8 +89,14 @@
     "nivel_importancia": 3,
     "era": "idade_ferro",
     "categoria": "batalha",
-    "atores": ["Atenas", "Esparta"],
-    "tags": ["grecia_antiga", "guerra"]
+    "atores": [
+      "Atenas",
+      "Esparta"
+    ],
+    "tags": [
+      "grecia_antiga",
+      "guerra"
+    ]
   },
   {
     "id": "evt_005",
@@ -93,8 +114,15 @@
     "nivel_importancia": 5,
     "era": "idade_media",
     "categoria": "politico",
-    "atores": ["Império Romano do Ocidente", "Hérulos"],
-    "tags": ["roma", "idade_media", "transicao"]
+    "atores": [
+      "Império Romano do Ocidente",
+      "Hérulos"
+    ],
+    "tags": [
+      "roma",
+      "idade_media",
+      "transicao"
+    ]
   },
   {
     "id": "evt_006",
@@ -112,8 +140,13 @@
     "nivel_importancia": 5,
     "era": "idade_media",
     "categoria": "desastre",
-    "atores": ["Europa Medieval"],
-    "tags": ["pandemia", "idade_media"]
+    "atores": [
+      "Europa Medieval"
+    ],
+    "tags": [
+      "pandemia",
+      "idade_media"
+    ]
   },
   {
     "id": "evt_007",
@@ -131,8 +164,15 @@
     "nivel_importancia": 5,
     "era": "idade_media",
     "categoria": "batalha",
-    "atores": ["Império Bizantino", "Império Otomano"],
-    "tags": ["bizancio", "otomanos", "guerra"]
+    "atores": [
+      "Império Bizantino",
+      "Império Otomano"
+    ],
+    "tags": [
+      "bizancio",
+      "otomanos",
+      "guerra"
+    ]
   },
   {
     "id": "evt_008",
@@ -151,8 +191,15 @@
     "era": "idade_moderna",
     "categoria": "descoberta",
     "modelo3D": "barco",
-    "atores": ["Coroa de Castela", "Povos indígenas americanos"],
-    "tags": ["exploracao", "america", "colonizacao"]
+    "atores": [
+      "Coroa de Castela",
+      "Povos indígenas americanos"
+    ],
+    "tags": [
+      "exploracao",
+      "america",
+      "colonizacao"
+    ]
   },
   {
     "id": "evt_009",
@@ -170,8 +217,13 @@
     "nivel_importancia": 5,
     "era": "idade_contemporanea",
     "categoria": "politico",
-    "atores": ["França"],
-    "tags": ["revolucao_francesa", "idade_contemporanea"]
+    "atores": [
+      "França"
+    ],
+    "tags": [
+      "revolucao_francesa",
+      "idade_contemporanea"
+    ]
   },
   {
     "id": "evt_010",
@@ -189,7 +241,132 @@
     "nivel_importancia": 5,
     "era": "idade_contemporanea",
     "categoria": "batalha",
-    "atores": ["Alemanha Nazista", "União Soviética"],
-    "tags": ["segunda_guerra_mundial", "batalha"]
+    "atores": [
+      "Alemanha Nazista",
+      "União Soviética"
+    ],
+    "tags": [
+      "segunda_guerra_mundial",
+      "batalha"
+    ]
+  },
+  {
+    "id": "evt_historia-antiga-claudia-beltrao-jorge-davidson-4577_1137",
+    "titulo": "Pantheon",
+    "resumo": "Em 101, em Pantheon: Pantheon.",
+    "data_inicio": "0101-01-01",
+    "data_fim": "0200-12-31",
+    "incerteza_data": "seculo",
+    "lat": 41.898616,
+    "lng": 12.4768334,
+    "local_nome_epoca": "Pantheon",
+    "local_nome_atual": "Pantheon, Piazza della Rotonda, Colonna, Municipio Roma I, Roma, Roma Capitale, Lazio, 00186, Italia",
+    "geocoding_fonte": "Nominatim",
+    "confianca_local": 0.5765802934853728,
+    "nivel_importancia": 3,
+    "era": "idade_ferro",
+    "categoria": "cultural",
+    "atores": [],
+    "tags": []
+  },
+  {
+    "id": "evt_historia-antiga-claudia-beltrao-jorge-davidson-4577_148",
+    "titulo": "Mapa-múndi da Babilônia",
+    "resumo": "Em 600 a.C., em Babilônia: Mapa-múndi da Babilônia, envolvendo Babilônia.",
+    "data_inicio": "-0599-01-01",
+    "data_fim": "-0500-12-31",
+    "incerteza_data": "seculo",
+    "lat": 32.5447132,
+    "lng": 44.4318143,
+    "local_nome_epoca": "Babilônia",
+    "local_nome_atual": "بابل, قرية عنان, ناحية مرکز قضاء الحلة, قضاء الحلة, محافظة بابل, العراق",
+    "geocoding_fonte": "Nominatim",
+    "confianca_local": 0.6540058275883172,
+    "nivel_importancia": 2,
+    "era": "idade_ferro",
+    "categoria": "cultural",
+    "atores": [
+      "Babilônia"
+    ],
+    "tags": []
+  },
+  {
+    "id": "evt_05-Hist-ria-Moderna-autor-Fabiano-Dauwe_496",
+    "titulo": "Concílio de Constança",
+    "resumo": "Em 1414, em Roma: Concílio de Constança.",
+    "data_inicio": "1414-01-01",
+    "data_fim": "1414-12-31",
+    "incerteza_data": "ano",
+    "lat": 41.8933203,
+    "lng": 12.4829321,
+    "local_nome_epoca": "Roma",
+    "local_nome_atual": "Roma, Roma Capitale, Lazio, Italia",
+    "geocoding_fonte": "Nominatim",
+    "confianca_local": 0.8563247902186547,
+    "nivel_importancia": 2,
+    "era": "idade_media",
+    "categoria": "religioso",
+    "atores": [],
+    "tags": []
+  },
+  {
+    "id": "evt_05-Hist-ria-Moderna-autor-Fabiano-Dauwe_1022",
+    "titulo": "Basílica de São Pedro",
+    "resumo": "Em 1517, em Basílica de São \nPedro: Basílica de São \nPedro.",
+    "data_inicio": "1517-01-01",
+    "data_fim": "1517-12-31",
+    "incerteza_data": "ano",
+    "lat": 41.9021569,
+    "lng": 12.4537105,
+    "local_nome_epoca": "Basílica de São Pedro",
+    "local_nome_atual": "Basilica di San Pietro, Piazza San Pietro, Civitas Vaticana - Città del Vaticano, 00120, Civitas Vaticana - Città del Vaticano",
+    "geocoding_fonte": "Nominatim",
+    "confianca_local": 0.6607973361606683,
+    "nivel_importancia": 2,
+    "era": "idade_moderna",
+    "categoria": "construcao",
+    "atores": [],
+    "tags": []
+  },
+  {
+    "id": "evt_05-Hist-ria-Moderna-autor-Fabiano-Dauwe_1940",
+    "titulo": "Reconquista",
+    "resumo": "Em 1492, em Península Ibérica: Reconquista.",
+    "data_inicio": "1492-01-01",
+    "data_fim": "1492-12-31",
+    "incerteza_data": "ano",
+    "lat": 39.8963997,
+    "lng": -4.4974366,
+    "local_nome_epoca": "Península Ibérica",
+    "local_nome_atual": "Iberia, España",
+    "geocoding_fonte": "Nominatim",
+    "confianca_local": 0.7052186659442361,
+    "nivel_importancia": 5,
+    "era": "idade_moderna",
+    "categoria": "batalha",
+    "atores": [],
+    "tags": []
+  },
+  {
+    "id": "evt_05-Hist-ria-Moderna-autor-Fabiano-Dauwe_73",
+    "titulo": "Bula Intercœtera",
+    "resumo": "Em 1493, em Cabo Verde: Bula Intercœtera, envolvendo Alexandre VI, Espanha.",
+    "data_inicio": "1493-01-01",
+    "data_fim": "1493-12-31",
+    "incerteza_data": "ano",
+    "lat": 16.0000552,
+    "lng": -24.0083947,
+    "local_nome_epoca": "Cabo Verde",
+    "local_nome_atual": "Cabo Verde",
+    "geocoding_fonte": "Nominatim",
+    "confianca_local": 0.7075260876058431,
+    "nivel_importancia": 2,
+    "era": "idade_moderna",
+    "categoria": "religioso",
+    "atores": [
+      "Alexandre VI",
+      "Espanha"
+    ],
+    "tags": []
   }
 ]
