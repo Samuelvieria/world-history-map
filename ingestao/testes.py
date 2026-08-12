@@ -25,6 +25,7 @@ from extracao.citacoes import esta_dentro_de_citacao, filtrar_citacoes, spans_de
 from extracao.correlacao import candidatos_correlacionados, pontuar
 from extracao.datas import ano_legivel, normalizar as normalizar_data, preencher_datas
 from extracao.estrutura import detectar_secoes, secao_em
+from extracao import gazetteer
 from extracao.geocoding import resolver as resolver_geocoding
 from extracao.modelo import CampoExtraido, EventoCandidato, Proveniencia
 from extracao.resumo import gerar_resumo
@@ -154,6 +155,68 @@ class TesteGeocodingComRede(unittest.TestCase):
         self.assertAlmostEqual(resultado.lat, 41.9, delta=1.0)
         self.assertAlmostEqual(resultado.lng, 12.5, delta=1.0)
         self.assertEqual(resultado.fonte, "Nominatim")
+
+
+class TesteGazetteerLocal(unittest.TestCase):
+    """Sem rede: resolver_local so' faz exact-match (normalizado) contra os
+    dois CSVs curados. resolver_geocoding (geocoding.resolver) tenta essa
+    camada primeiro — confirmado aqui indiretamente pela fonte devolvida."""
+
+    def test_municipio_brasileiro_resolve_via_ibge(self) -> None:
+        resultado = gazetteer.resolver_local("Manaus")
+        self.assertIsNotNone(resultado)
+        self.assertAlmostEqual(resultado.lat, -3.134691, delta=0.01)
+        self.assertAlmostEqual(resultado.lng, -60.023335, delta=0.01)
+        self.assertEqual(resultado.fonte, "IBGE (municipios)")
+        self.assertEqual(resultado.confianca, 0.9)
+
+    def test_municipio_brasileiro_ignora_caixa_e_acento(self) -> None:
+        self.assertIsNotNone(gazetteer.resolver_local("porto velho"))
+        self.assertIsNotNone(gazetteer.resolver_local("PORTO VELHO"))
+
+    def test_cidade_mundial_curada_resolve(self) -> None:
+        resultado = gazetteer.resolver_local("Kabul")
+        self.assertIsNotNone(resultado)
+        self.assertAlmostEqual(resultado.lat, 34.52813, delta=0.01)
+        self.assertEqual(resultado.fonte, "gazetteer mundial (curado)")
+        self.assertEqual(resultado.confianca, 0.85)  # historical/curated
+
+    def test_alias_pt_para_planilha_mundial_resolve(self) -> None:
+        """"Atenas" -> "athens" via alias, batendo na planilha mundial completa."""
+        resultado = gazetteer.resolver_local("Atenas")
+        self.assertIsNotNone(resultado)
+        self.assertAlmostEqual(resultado.lat, 37.98376, delta=0.01)
+        self.assertEqual(resultado.fonte, "gazetteer mundial (curado)")
+
+    def test_nome_desconhecido_devolve_none_sem_fuzzy_match(self) -> None:
+        self.assertIsNone(gazetteer.resolver_local("lugar-que-nao-existe-em-nenhum-csv"))
+
+    def test_mundo_tem_prioridade_sobre_brasil_quando_ambiguo(self) -> None:
+        """"Braga" existe como municipio brasileiro E como cidade em Portugal
+        (colisao real medida contra os dois CSVs completos) — pro corpus de
+        historia antiga/moderna, a cidade mundial e' a resposta certa."""
+        resultado = gazetteer.resolver_local("Braga")
+        self.assertIsNotNone(resultado)
+        self.assertEqual(resultado.fonte, "gazetteer mundial (curado)")
+        self.assertAlmostEqual(resultado.lat, 41.5514, delta=0.01)
+
+    def test_municipio_sem_colisao_ainda_resolve_pro_brasil(self) -> None:
+        """Belem (Para) nao colide com nenhuma cidade da planilha mundial —
+        Bethlehem la' esta' em ingles, nao "Belem" — entao a ordem nao muda
+        o resultado: ainda resolve pro Brasil, so' porque e' o unico lado
+        que tem esse nome."""
+        resultado = gazetteer.resolver_local("Belem")
+        self.assertIsNotNone(resultado)
+        self.assertEqual(resultado.fonte, "IBGE (municipios)")
+
+    def test_resolver_geocoding_usa_gazetteer_antes_de_nominatim(self) -> None:
+        """geocoding.resolver() tem que devolver o resultado do gazetteer sem
+        bater rede — testavel indiretamente pela fonte, sem precisar de
+        COM_REDE=1 porque o gazetteer resolve antes de qualquer rede entrar
+        em jogo."""
+        resultado = resolver_geocoding("Kabul")
+        self.assertIsNotNone(resultado)
+        self.assertEqual(resultado.fonte, "gazetteer mundial (curado)")
 
 
 class TesteNormalizacaoData(unittest.TestCase):

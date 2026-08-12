@@ -1,19 +1,27 @@
-"""Geocoding — passo 5 do IA.md, caminho barato (MVP): Nominatim.
+"""Geocoding — passo 5 do IA.md.
 
-MVP conforme o IA.md: "Nominatim / GeoNames (coordenadas modernas, aceitar
-imprecisão)". Geocoders comuns resolvem o nome ATUAL do lugar, não o nome de
-época — "Baixa Mesopotâmia" pode não achar nada, "Constantinopla" pode achar
-por já ser um alias conhecido do OSM. Aceitar essa imprecisão é a decisão,
-não um acidente; WHG/Pleiades (nomes de época de verdade) ficam pra depois.
+Duas camadas, nessa ordem:
+  1. Gazetteer local (`extracao.gazetteer`) — municípios do IBGE + cidades
+     historicamente relevantes do mundo, curados. Sem rede, sem ambiguidade
+     pros nomes que cobre. Ver gazetteer.py pro porque disso existir: medido
+     nesta sessão que o Nominatim resolve homônimo com confiança alta
+     ("ABC" → sede da rádio australiana ABC, "Reino Novo" → aeroporto de
+     uma cidade brasileira).
+  2. Nominatim (MVP do IA.md) — só quando o gazetteer local não tem o nome.
+     Geocoders comuns resolvem o nome ATUAL do lugar, não o nome de época —
+     "Baixa Mesopotâmia" pode não achar nada. Aceitar essa imprecisão é a
+     decisão, não um acidente; WHG/Pleiades (nomes de época de verdade)
+     ficam pra depois.
 
-Nunca inventa coordenada: sem resultado do Nominatim, devolve None. Um
-lat/lng chutado seria pior que nenhum — entraria no banco parecendo dado e
-cravaria um ponto errado no globo.
+Nunca inventa coordenada, em nenhuma das duas camadas: sem resultado, devolve
+None. Um lat/lng chutado seria pior que nenhum — entraria no banco parecendo
+dado e cravaria um ponto errado no globo.
 
 Respeita a política de uso do Nominatim (nominatim.org/release-docs/latest/api/Search/):
 no máximo 1 requisição por segundo, User-Agent identificando a aplicação, sem
 uso em massa. Com algumas dezenas de candidatos por vez (revisão humana é o
-gargalo, não a geocodificação), isso nunca chega perto do limite.
+gargalo, não a geocodificação), isso nunca chega perto do limite — e agora
+menos ainda, já que o gazetteer local resolve boa parte sem bater rede.
 """
 
 from __future__ import annotations
@@ -53,6 +61,20 @@ def _esperar_rate_limit() -> None:
 
 
 def resolver(nome_lugar: str) -> ResultadoGeocoding | None:
+    """Gazetteer local primeiro (sem rede, sem ambiguidade pro que cobre);
+    Nominatim so' se o local nao tiver o nome. None se nenhum dos dois
+    achar — nunca chuta.
+    """
+    from . import gazetteer  # import tardio: evita ciclo (gazetteer importa daqui)
+
+    resultado_local = gazetteer.resolver_local(nome_lugar)
+    if resultado_local is not None:
+        return resultado_local
+
+    return _resolver_nominatim(nome_lugar)
+
+
+def _resolver_nominatim(nome_lugar: str) -> ResultadoGeocoding | None:
     """Busca `nome_lugar` no Nominatim. None se nao achar nada — nunca chuta.
 
     `confianca` vem do campo `importance` do Nominatim: mede o quao
