@@ -218,6 +218,34 @@ pro nosso caso; confiança sozinha não bastava). Resultado: 6 de 21 publicados
 de fato, testado no app rodando (busca por "Pantheon" abre painel com
 localização/data/resumo corretos). Detalhe completo no IA.md.
 
+## Gazetteer local — camada antes do Nominatim
+
+`extracao/gazetteer.py`: dois CSVs em `dados/` — todos os **5565 municípios**
+do IBGE e as **1033 cidades curadas** dos 195 países de
+`cidades_historicas_mundo.csv` — checados por **exact match normalizado**
+antes de bater no Nominatim. Nunca fuzzy-match, nunca chuta: sem hit exato
+nos dois, cai pro Nominatim; sem hit lá também, `None`.
+
+`geocoding.resolver()` tenta essa camada primeiro; só bate rede se o nome não
+estiver em nenhum dos dois CSVs.
+
+**Achado real medindo contra as 191 localizações únicas das duas amostras
+aprovadas**: com os dois CSVs completos, 30 nomes colidem entre um município
+brasileiro e uma cidade mundial curada (Alexandria, Barcelona, Braga, Buenos
+Aires, Coimbra, Colombo, Porto, Santiago, Toledo, Valparaíso etc. — muitas
+são cidades brasileiras batizadas em homenagem à cidade mundial, herança da
+colonização portuguesa). Em nenhuma colisão medida o município brasileiro era
+a resposta certa para esse corpus (livros de história antiga/moderna) — por
+isso o gazetteer checa **mundo antes de Brasil**, invertido da decisão
+original que supunha o contrário.
+
+**Gap residual, não resolvido de propósito**: o CSV mundial lista cidades
+dentro de um país, não o país como linha própria. Uma referência solta a um
+país ("Malta", "Cabo Verde") ou um termo genérico que colide por acaso com
+nome de município ("Novo Mundo") ainda resolve pro Brasil, porque não há
+entrada mundial concorrendo. Fica como candidato pra revisão humana corrigir
+— mesma régua do resto do pipeline.
+
 ## Correlação entre fontes ("Validação por consenso" do CLAUDE.md)
 
 Sem isso, o mesmo acontecimento em dois livros diferentes virava dois

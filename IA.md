@@ -508,3 +508,51 @@ redor do span — e não só dentro dele — funciona. Detalhe em
 Gizé" duas vezes). Não é alucinação — o template só está mostrando fielmente
 que dois campos do candidato coincidem — mas é cosmético a corrigir quando o
 passo 4 evoluir.
+
+---
+
+## STATUS — gazetteer local pro passo 5, mundo com prioridade sobre Brasil
+
+Motivado pelo achado da seção anterior sobre passo 5 (Nominatim resolvendo
+homônimo com confiança alta): `extracao/gazetteer.py` adiciona uma camada
+local, checada ANTES do Nominatim em `geocoding.resolver()` — exact match
+normalizado (sem acento/caixa) contra dois CSVs em `ingestao/dados/`, nunca
+fuzzy-match, `None` se não achar em nenhum dos dois.
+
+Os dois CSVs foram lidos direto dos arquivos originais do usuário (`.xls` do
+IBGE, `.csv` das cidades mundiais curadas) — não por transcrição manual no
+chat, depois que uma tentativa anterior de transcrever à mão introduziu um
+erro real (código IBGE duplicado entre dois municípios diferentes) e cobria
+só uma fração pequena dos dados (16 de 27 unidades federativas do Brasil,
+Afeganistão–Bahamas do mundo). Cobertura final: **5565 municípios** (100% do
+Brasil) e **1033 cidades curadas de 195 países**.
+
+**Achado real, medido contra os 191 locais únicos das duas amostras já
+aprovadas**: com os dois CSVs completos, **30 nomes colidem** entre um
+município brasileiro e uma cidade mundial curada — Alexandria, Barcelona,
+Braga, Buenos Aires, Coimbra, Colombo, Nantes, Porto, Rosário, Santa Fé,
+Santiago, Toledo, Valparaíso, entre outras (muitas são cidades brasileiras
+batizadas em homenagem à cidade mundial, herança da colonização portuguesa).
+Em **nenhuma** das colisões medidas o lado brasileiro era a resposta certa
+para o corpus atual (história antiga/moderna, não história regional do
+Brasil) — o design original (Brasil antes do mundo, pra resolver "Belém" =
+Pará em vez de Belém bíblica) foi invertido com base nessa medição: **mundo
+checado antes de Brasil**. Onde os dois lados dão a mesma cidade (Brasília,
+Recife, Salvador, São Paulo — que também entraram na curadoria mundial por
+relevância histórica própria), a ordem não importa.
+
+Hit rate contra as 191 localizações: só 14 resolvem pelo gazetteer hoje
+(Ankara, Atenas, Cairo, Paris, Veneza, Santiago de Compostela e outras) — os
+outros 177 caem pro Nominatim, porque a maioria dos locais extraídos de
+livros de história antiga/moderna são nomes do mundo antigo (Uruk, Mênfis,
+Nínive, Mesopotâmia) que uma lista de cidades *modernas* por país não cobre
+e nunca vai cobrir sem uma fonte de nomes de época (WHG/Pleiades, item 5 do
+roadmap original).
+
+**Gap residual, documentado, não resolvido**: o CSV mundial lista cidades
+DENTRO de um país, não o país como linha própria. Uma referência solta a um
+país ("Malta", "Cabo Verde") ou um termo genérico que colide por acaso com
+nome de município ("Novo Mundo") ainda resolve errado pro Brasil, porque não
+há entrada mundial concorrendo. Fica como candidato pra revisão humana
+corrigir — a mesma régua de "IA só sugere, humano aprova" que sustenta o
+resto do pipeline.
