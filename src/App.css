@@ -361,6 +361,41 @@
   padding: 14px 20px 12px;
 }
 
+/* Botoes de periodo: largura igual entre eles, independente de quanto tempo
+ * o periodo dura de fato — e' o que resolve a Idade Contemporanea (237 anos)
+ * sendo inutilmente fina numa escala linear de -10000 a 2026. */
+.timeline__periodos {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+}
+
+.timeline__periodo {
+  --cor-periodo: #6b7280;
+  flex: 1;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.timeline__periodo:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #f3f4f6;
+}
+
+.timeline__periodo--ativo {
+  background: var(--cor-periodo);
+  border-color: var(--cor-periodo);
+  color: white;
+}
+
 .timeline__eras {
   position: relative;
   height: 20px;

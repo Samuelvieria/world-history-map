@@ -61,7 +61,14 @@ interface GlobeProps {
   selectedId: string | null;
   onSelectEvent: (event: PositionedEvent) => void;
   onSelectRegiao: (f: Feicao) => void;
-  onZoom: (altitude: number) => void;
+  onZoom: (pose: { lat: number; lng: number; altitude: number }) => void;
+  /**
+   * Clique no globo que NAO acertou nenhum poligono de `regioes` (three-globe
+   * so' repassa pra ca' quando o raycast de poligono nao pega nada — por
+   * isso nao ha risco de disparar junto com `onSelectRegiao` no mesmo clique).
+   * Usado pra saltar direto de um pais pro outro sem passar pelo mundo.
+   */
+  onClicarPontoLivre?: (lat: number, lng: number) => void;
 }
 
 const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
@@ -75,6 +82,7 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     onSelectEvent,
     onSelectRegiao,
     onZoom,
+    onClicarPontoLivre,
   },
   ref,
 ) {
@@ -126,7 +134,8 @@ const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       showAtmosphere
       atmosphereColor="#5b9bd5"
       atmosphereAltitude={0.16}
-      onZoom={(pov) => onZoom(pov.altitude)}
+      onZoom={(pov) => onZoom({ lat: pov.lat, lng: pov.lng, altitude: pov.altitude })}
+      onGlobeClick={(coords) => onClicarPontoLivre?.(coords.lat, coords.lng)}
       // Regioes clicaveis do drill-down (mundo -> pais -> estado).
       // Altitude baixinha e cor quase transparente: a malha serve de alvo de
       // clique e de contorno, sem tapar o relevo dos tiles.

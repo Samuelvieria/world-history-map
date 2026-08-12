@@ -2,6 +2,12 @@ import type { Feicao } from './geojson';
 
 export type NivelNavegacao = 'mundo' | 'pais' | 'estado';
 
+export interface CameraPose {
+  lat: number;
+  lng: number;
+  altitude: number;
+}
+
 export interface PassoNavegacao {
   nivel: NivelNavegacao;
   /**
@@ -18,6 +24,14 @@ export interface PassoNavegacao {
    * geometrias); hoje sempre 0 ou 1 feicao — o pais ou estado clicado.
    */
   recorte: Feicao[];
+  /**
+   * Pose da camera no momento em que o usuario SAIU deste passo pra
+   * mergulhar mais fundo — None enquanto o passo e' o atual. Sem isso,
+   * "voltar" so' sabia reenquadrar o recorte inteiro, o que jogava a camera
+   * pra um ponto generico (ex.: mundo sempre voltava pra lat 20/lng 10) em
+   * vez de restaurar de onde a pessoa realmente tinha saido.
+   */
+  camera?: CameraPose;
 }
 
 /**
