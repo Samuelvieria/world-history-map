@@ -1,7 +1,7 @@
 # VISUAL.md — Direção visual do Globo Histórico
 
 > Brief de design para os marcadores e a interface do mapa.
-> Complementa o CLAUDE.md. Stack: React + react-globe.gl (Three.js/WebGL).
+> Complementa o ARQUITETURA.md. Stack: React + react-globe.gl (Three.js/WebGL).
 
 ## Prior-art para estudar (roubar ideias de UI)
 
@@ -188,7 +188,7 @@ coerente com o modelo de dados, que já assume coordenada aproximada
 - Arcos/paths (campanhas, rotas, migrações) — faz sentido quando tivermos
   eventos com origem+destino nos dados.
 - Fronteiras históricas por era — depende de um dataset GeoJSON aberto por ano,
-  com licença confirmada (ver CLAUDE.md). Fase 3. É o que tornaria a navegação
+  com licença confirmada (ver ARQUITETURA.md). Fase 3. É o que tornaria a navegação
   historicamente correta, em vez de apenas rotulada como moderna.
 - Modelos 3D em GLB de verdade (Poly Pizza/Kenney/Quaternius) continuam um
   caminho válido para LOD alto, mas exigem verificar a licença de cada arquivo.
