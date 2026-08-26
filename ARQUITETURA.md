@@ -1,4 +1,4 @@
-# CLAUDE.md — Globo Histórico Interativo
+# ARQUITETURA.md — Globo Histórico Interativo
 
 > Este arquivo dá contexto ao Claude Code. Coloque-o na raiz do projeto.
 > Ele resume as decisões tomadas no planejamento inicial.
