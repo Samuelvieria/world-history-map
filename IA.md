@@ -1,6 +1,6 @@
 # IA.md — Pipeline de extração (livro → eventos no globo)
 
-> Como a "IA" do projeto funciona. Complementa CLAUDE.md e VISUAL.md.
+> Como a "IA" do projeto funciona. Complementa ARQUITETURA.md e VISUAL.md.
 > Decisão: **Solução B — modelos pequenos locais especializados, SEM LLM
 > generativo.** Roda local, offline, barato, e não fabrica (só marca trechos).
 
@@ -84,7 +84,7 @@ PDF
 - **Busca semântica** ("pesquiso Odesa"): sentence-transformers, local, encoder
   (não gera texto).
 
-## Mapeamento pro modelo de dados (ver CLAUDE.md)
+## Mapeamento pro modelo de dados (ver ARQUITETURA.md)
 
 - GLiNER → `titulo`, `categoria`, `atores`, spans de origem em cada campo.
 - HeidelTime/dateparser → `data_inicio`, `data_fim`, `incerteza_data`.
@@ -280,7 +280,7 @@ confirmada campo a campo.
 
 Deliberadamente **não** grava no mapa nem converte para `HistoricalEvent`:
 falta geocoding real (passo 5, ainda stub — candidato aprovado sem `lat`/
-`lng` não tem onde aparecer) e falta o backend/banco da Fase 1 do CLAUDE.md,
+`lng` não tem onde aparecer) e falta o backend/banco da Fase 1 do ARQUITETURA.md,
 que ainda não existe. O script avisa explicitamente quantos aprovados ficam
 "presos" sem coordenada, em vez de deixar isso implícito.
 
@@ -371,7 +371,7 @@ para os 3/15 esperados pela revisão manual original.
 
 ## STATUS — passo 5 (geocoding real) implementado, caminho barato até o globo
 
-Decisão explícita de escopo: em vez de construir a Fase 1 do CLAUDE.md
+Decisão explícita de escopo: em vez de construir a Fase 1 do ARQUITETURA.md
 (FastAPI + PostGIS) agora, `ingestao/publicar.py` faz a ponte mais simples
 possível — pega os `status="aprovado"` de `revisar.py`, geocodifica com
 Nominatim (`extracao/geocoding.py`, MVP do IA.md, antes stub) e funde direto
@@ -415,7 +415,7 @@ curto) — nunca silenciosamente.
 
 ## STATUS — correlação entre fontes implementada ("Validação por consenso")
 
-Implementa a seção "Validação por consenso" do CLAUDE.md, prevista desde o
+Implementa a seção "Validação por consenso" do ARQUITETURA.md, prevista desde o
 início e nunca construída: não guardar "a verdade", guardar asserções de
 fontes, corroborar quando fontes independentes concordam, **mostrar a
 divergência quando discordam em vez de forçar consenso**. Motivada por uma
