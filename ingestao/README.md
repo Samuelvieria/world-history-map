@@ -177,7 +177,7 @@ cosmético, não corrompe proveniência nem factualidade.
   inventado é pior que nenhum: entraria no banco parecendo dado e cravaria um
   ponto errado no globo.
 - O texto verbatim fica em `Proveniencia.trecho` para rastreabilidade interna
-  e **nunca** deve ir para a tela (direito autoral — ver CLAUDE.md).
+  e **nunca** deve ir para a tela (direito autoral — ver ARQUITETURA.md).
 
 ## Passo 8 — fila de revisão (novo, em CLI)
 
@@ -200,7 +200,7 @@ no JSON. Ver `publicar.py` abaixo pro que falta depois disso.
 `publicar.py` pega os `status="aprovado"` de um ou mais JSONs, geocodifica
 `local_nome_epoca` com **Nominatim** (MVP do IA.md — antes stub) e funde no
 `src/data/events.json` que o app React já lê, no formato de
-`HistoricalEvent`. **Não** é a Fase 1 do CLAUDE.md (FastAPI + PostGIS) — é o
+`HistoricalEvent`. **Não** é a Fase 1 do ARQUITETURA.md (FastAPI + PostGIS) — é o
 caminho mais simples que prova o loop completo (livro → extração → revisão
 → mapa) sem construir backend/banco ainda.
 
@@ -254,7 +254,7 @@ nome de município ("Novo Mundo") ainda resolve pro Brasil, porque não há
 entrada mundial concorrendo. Fica como candidato pra revisão humana corrigir
 — mesma régua do resto do pipeline.
 
-## Correlação entre fontes ("Validação por consenso" do CLAUDE.md)
+## Correlação entre fontes ("Validação por consenso" do ARQUITETURA.md)
 
 Sem isso, o mesmo acontecimento em dois livros diferentes virava dois
 marcadores duplicados no mapa. `correlacionar.py` sugere pares de aprovados
